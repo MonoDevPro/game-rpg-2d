@@ -20,6 +20,11 @@ public struct InputComponent : IComponent
     public bool IsMovementPressed;
 
     /// <summary>
+    /// Indica se o comando de movimento foi pressionado neste frame
+    /// </summary>
+    public bool IsMovementJustPressed;
+
+    /// <summary>
     /// Indica se o comando de ataque está ativo
     /// </summary>
     public bool IsAttackPressed;

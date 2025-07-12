@@ -27,8 +27,12 @@ public partial class MovementSystem : BaseSystem<World, float>
     [Query]
     [All<MovementComponent, InputComponent, LocalPlayerTag>]
     private void ProcessInput([Data] in float deltaTime, ref MovementComponent movement, in InputComponent input, in LocalPlayerTag playerTag)
-    {        // Se não está se movendo e há input de movimento, inicia novo movimento
-        if (!movement.IsMoving && input.IsMovementPressed && input.MovementDirection != Direction.None)
+    {
+        // Atualiza flag de input contínuo
+        movement.HasContinuousInput = input.IsMovementPressed && input.MovementDirection != Direction.None;
+
+        // Se não está se movendo e há input de movimento, inicia novo movimento
+        if (!movement.IsMoving && movement.HasContinuousInput)
         {
             var newTargetGridPosition = movement.GridPosition + PositionHelper.DirectionToVector(input.MovementDirection);
             var newTargetWorldPosition = PositionHelper.GridToWorld(newTargetGridPosition);
@@ -40,16 +44,15 @@ public partial class MovementSystem : BaseSystem<World, float>
             movement.IsMoving = true;
             movement.MoveProgress = 0.0f;
         }
-        // Se está se movendo e não há mais input, continua o movimento atual
-        else if (movement.IsMoving && !input.IsMovementPressed)
+        // Se está se movendo e há input de nova direção, armazena para próximo movimento
+        else if (movement.IsMoving && movement.HasContinuousInput && input.MovementDirection != movement.CurrentDirection)
         {
-            // Movimento continua até completar
+            movement.PendingDirection = input.MovementDirection;
         }
-        // Se está se movendo e há input de nova direção, pode iniciar novo movimento após completar o atual
-        else if (movement.IsMoving && input.IsMovementPressed && input.MovementDirection != movement.CurrentDirection)
+        // Se parou de pressionar, limpa input contínuo
+        else if (!movement.HasContinuousInput)
         {
-            // Atualiza direção para próximo movimento
-            movement.CurrentDirection = input.MovementDirection;
+            movement.PendingDirection = Direction.None;
         }
     }
 
@@ -88,8 +91,31 @@ public partial class MovementSystem : BaseSystem<World, float>
             // Movimento concluído
             movement.GridPosition = movement.TargetGridPosition;
             movement.WorldPosition = movement.TargetWorldPosition;
-            movement.IsMoving = false;
             movement.MoveProgress = 0.0f;
+
+            // Verifica se deve continuar movimento contínuo
+            if (movement.HasContinuousInput)
+            {
+                // Se há direção pendente, usa ela; senão continua na mesma direção
+                var nextDirection = movement.PendingDirection != Direction.None ? movement.PendingDirection : movement.CurrentDirection;
+
+                // Inicia próximo movimento imediatamente
+                var newTargetGridPosition = movement.GridPosition + PositionHelper.DirectionToVector(nextDirection);
+                var newTargetWorldPosition = PositionHelper.GridToWorld(newTargetGridPosition);
+
+                movement.CurrentDirection = nextDirection;
+                movement.TargetGridPosition = newTargetGridPosition;
+                movement.TargetWorldPosition = newTargetWorldPosition;
+                movement.StartWorldPosition = movement.WorldPosition;
+                movement.IsMoving = true;
+                movement.MoveProgress = 0.0f;
+                movement.PendingDirection = Direction.None;
+            }
+            else
+            {
+                // Para o movimento
+                movement.IsMoving = false;
+            }
         }
         else
         {

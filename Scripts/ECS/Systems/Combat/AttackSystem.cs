@@ -35,7 +35,11 @@ public partial class AttackSystem : BaseSystem<World, float>
                        (currentTime - attack.LastAttackTime) >= attack.AttackCooldown;
 
         // Se recebeu input de ataque e pode atacar
-        if (input.IsAttackJustPressed && canAttack)
+        // Suporta tanto ataque único (JustPressed) quanto contínuo (Pressed após cooldown)
+        var wantsToAttack = input.IsAttackJustPressed ||
+                           (input.IsAttackPressed && canAttack);
+
+        if (wantsToAttack && canAttack)
         {
             // Inicia ataque na direção atual do movimento
             var attackDirection = movement.CurrentDirection != Direction.None

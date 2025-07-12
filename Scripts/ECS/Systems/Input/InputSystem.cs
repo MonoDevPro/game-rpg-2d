@@ -38,6 +38,7 @@ public partial class InputSystem : BaseSystem<World, float>
         // Determina direção baseada no input
         var direction = GetDirectionFromInput(rawInput);
         var isMovementPressed = rawInput.LengthSquared() > 0;
+        var isMovementJustPressed = isMovementPressed && !input.IsMovementPressed; // Detecta início do movimento
 
         // Captura input de ataque
         var isAttackPressed = Godot.Input.IsActionPressed(_attackAction);
@@ -49,6 +50,7 @@ public partial class InputSystem : BaseSystem<World, float>
         // Atualiza o componente diretamente
         input.MovementDirection = direction;
         input.IsMovementPressed = isMovementPressed;
+        input.IsMovementJustPressed = isMovementJustPressed;
         input.IsAttackPressed = isAttackPressed;
         input.IsAttackJustPressed = isAttackJustPressed;
         input.RawInput = rawInput;

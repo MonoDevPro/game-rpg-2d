@@ -131,9 +131,13 @@ public static class PositionHelper
         return direction switch
         {
             Direction.North => Vector2I.Up,
-            Direction.South => Vector2I.Down,
+            Direction.NorthEast => Vector2I.Up + Vector2I.Right,
             Direction.East => Vector2I.Right,
+            Direction.SouthEast => Vector2I.Down + Vector2I.Right,
+            Direction.South => Vector2I.Down,
+            Direction.SouthWest => Vector2I.Down + Vector2I.Left,
             Direction.West => Vector2I.Left,
+            Direction.NorthWest => Vector2I.Up + Vector2I.Left,
             _ => Vector2I.Zero
         };
     }
@@ -146,9 +150,13 @@ public static class PositionHelper
     public static Direction VectorToDirection(Vector2I vector)
     {
         if (vector == Vector2I.Up) return Direction.North;
-        if (vector == Vector2I.Down) return Direction.South;
+        if (vector == Vector2I.Up + Vector2I.Right) return Direction.NorthEast;
         if (vector == Vector2I.Right) return Direction.East;
+        if (vector == Vector2I.Down + Vector2I.Right) return Direction.SouthEast;
+        if (vector == Vector2I.Down) return Direction.South;
+        if (vector == Vector2I.Down + Vector2I.Left) return Direction.SouthWest;
         if (vector == Vector2I.Left) return Direction.West;
+        if (vector == Vector2I.Up + Vector2I.Left) return Direction.NorthWest;
         return Direction.None;
     }
 

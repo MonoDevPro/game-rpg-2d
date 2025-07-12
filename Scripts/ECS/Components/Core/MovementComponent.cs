@@ -62,4 +62,14 @@ public struct MovementComponent : IComponent
     /// Progresso do movimento atual (0.0 a 1.0)
     /// </summary>
     public float MoveProgress;
+
+    /// <summary>
+    /// Direção pendente para o próximo movimento
+    /// </summary>
+    public Direction PendingDirection;
+
+    /// <summary>
+    /// Indica se há input contínuo de movimento
+    /// </summary>
+    public bool HasContinuousInput;
 }

@@ -3,7 +3,6 @@ using Arch.Core;
 using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.ECS.Components;
-using GameRpg2D.Scripts.ECS.Infrastructure;
 using GameRpg2D.Scripts.Infrastructure;
 using Godot;
 
@@ -24,12 +23,10 @@ public abstract partial class BaseBody : CharacterBody2D
     /// Caminho para o nó EcsRunner registrado como singleton/autoload
     /// </summary>
     // ReSharper disable once InconsistentNaming
-    [Export] protected NodePath WorldPath;
-    [Export] protected SpriteFrames SpriteFrames;
-    [Export] protected StringName DefaultAnimation = "idle_down";
+    [Export] protected StringName DefaultAnimation = "idle_south";
     [Export] protected Vocation Vocation = Vocation.Mage;
     [Export] protected Gender Gender = Gender.Male;
-    [Export] protected float MoveSpeed = 100f; // Velocidade de movimento padrão
+    [Export] protected float MoveSpeed = GameConstants.DEFAULT_MOVEMENT_SPEED; // Velocidade de movimento padrão
     [Export] protected float AttackSpeed = GameConstants.DEFAULT_ATTACK_SPEED;
     [Export] protected float AttackCooldown = GameConstants.DEFAULT_ATTACK_COOLDOWN;
     #endregion
@@ -55,9 +52,9 @@ public abstract partial class BaseBody : CharacterBody2D
         base._Ready();
 
         // Busca o nó EcsRunner no autoload do ECS
-        var ecsNode = GetNodeOrNull<EcsRunner>(WorldPath);
+        var ecsNode = GameManager.Instance?.EcsRunner;
         if (ecsNode is null)
-            throw new InvalidOperationException("O nó apontado em WorldPath não é um EcsRunner ou não foi adicionado como singleton.");
+            throw new InvalidOperationException("O EcsRunner ou não foi adicionado.");
 
         World = ecsNode.World;
 
@@ -176,9 +173,7 @@ public abstract partial class BaseBody : CharacterBody2D
 
         _sprite.SpriteFrames = spriteFrames;
 
-        if (spriteFrames.HasAnimation(DefaultAnimation))
-            _sprite.Play(DefaultAnimation);
-        else
-            GD.PrintErr($"Animação padrão '{DefaultAnimation}' não encontrada em SpriteFrames.");
+        // Não reproduz animação aqui - deixa para o AnimationSystem fazer
+        // O AnimationSystem vai definir a animação correta baseado no estado inicial
     }
 }
