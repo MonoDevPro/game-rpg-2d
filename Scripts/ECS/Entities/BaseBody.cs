@@ -30,6 +30,7 @@ public abstract partial class BaseBody : CharacterBody2D
     [Export] protected float MoveSpeed = GameConstants.DEFAULT_MOVEMENT_SPEED; // Velocidade de movimento padrão
     [Export] protected float AttackSpeed = GameConstants.DEFAULT_ATTACK_SPEED;
     [Export] protected float AttackCooldown = GameConstants.DEFAULT_ATTACK_COOLDOWN;
+    [Export] protected bool EnableDebugCollision = false; // Habilita visualização de colisão para debug
     #endregion
 
     #region ECS
@@ -196,7 +197,7 @@ public abstract partial class BaseBody : CharacterBody2D
             LastValidPosition = GlobalPosition,
             BlockedDirections = CollisionDirections.None,
             DetectionRadius = GameConstants.GRID_SIZE / 2.0f,
-            EnableDebugVisualization = false // Pode ser habilitado via Export se necessário
+            EnableDebugVisualization = EnableDebugCollision // Pode ser habilitado via Export se necessário
         };
 
         AddComponent(collisionComponent);
