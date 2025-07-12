@@ -1,147 +1,237 @@
 using System;
+using System.Runtime.CompilerServices;
 using Arch.Core;
+using Arch.System;
+using Arch.System.SourceGenerator;
+using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.ECS.Components;
 using GameRpg2D.Scripts.ECS.Components.Tags;
-using GameRpg2D.Scripts.Constants;
+using GameRpg2D.Scripts.Utilities;
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Systems
+namespace GameRpg2D.Scripts.ECS;
+
+/// <summary>
+/// Sistema responsável pela inteligência artificial dos NPCs
+/// </summary>
+public partial class AISystem : BaseSystem<World, float>
 {
+    private readonly Random _random = new();
+    
+    public AISystem(World world) : base(world) { }
+
     /// <summary>
-    /// Sistema de IA que controla comportamento de NPCs
+    /// Processa comportamento de patrulha para NPCs
     /// </summary>
-    public class AISystem(World world)
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessPatrolBehavior(
+        [Data] in float deltaTime,
+        ref BehaviourComponent behavior,
+        ref MovementComponent movement,
+        in PositionComponent position)
     {
-        private readonly QueryDescription _npcQuery = new QueryDescription()
-            .WithAll<InputComponent, BehaviorComponent, NPCTag, PositionComponent>();
+        if (behavior.BehaviourType != NpcBehaviourType.Patrol)
+            return;
 
-        private readonly Random _random = new();
+        behavior.ActionTimer += deltaTime;
 
-        public void Update(float deltaTime)
+        // Se não está se movendo e passou o tempo de ação
+        if (!movement.IsMoving && behavior.ActionTimer >= behavior.ActionInterval)
         {
-            world.Query(in _npcQuery, (ref InputComponent input, ref BehaviorComponent behavior, ref PositionComponent position) =>
+            // Escolhe uma direção aleatória para patrulhar
+            var directions = new[] { Vector2I.Up, Vector2I.Down, Vector2I.Left, Vector2I.Right };
+            var randomDirection = directions[_random.Next(directions.Length)];
+            
+            var positionVector = position.ToVector2();
+            var currentGridPos = GridUtils.WorldToGrid(positionVector);
+            var targetGridPos = currentGridPos + randomDirection;
+            
+            // Inicia movimento
+            movement.Direction = randomDirection;
+            movement.StartGridPosition = currentGridPos;
+            movement.TargetGridPosition = targetGridPos;
+            movement.Progress = 0.0f;
+            
+            behavior.ActionTimer = 0.0f;
+        }
+    }
+
+    /// <summary>
+    /// Processa comportamento estático (NPCs que ficam parados)
+    /// </summary>
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessIdleBehavior(
+        [Data] in float deltaTime,
+        ref BehaviourComponent behavior,
+        ref MovementComponent movement)
+    {
+        if (behavior.BehaviourType != NpcBehaviourType.Idle)
+            return;
+
+        // NPCs idle não se movem, apenas resetam movimento se estiverem se movendo
+        if (movement.IsMoving)
+        {
+            movement.Direction = Vector2I.Zero;
+            movement.Progress = 0.0f;
+        }
+    }
+
+    /// <summary>
+    /// Processa comportamento agressivo (perseguir player)
+    /// </summary>
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessAggressiveBehavior(
+        [Data] in float deltaTime,
+        ref BehaviourComponent behavior,
+        ref MovementComponent movement,
+        in PositionComponent position,
+        ref AIStateComponent aiState)
+    {
+        if (behavior.BehaviourType != NpcBehaviourType.Aggressive)
+            return;
+
+        aiState.LastDecisionTime += deltaTime;
+        
+        // Só toma decisões a cada intervalo
+        if (aiState.LastDecisionTime < aiState.DecisionCooldown)
+            return;
+
+        // Procura pelo player próximo
+        var positionVector = position.ToVector2();
+        var playerPosition = FindNearestPlayer(positionVector);
+        
+        if (playerPosition.HasValue)
+        {
+            var currentGridPos = GridUtils.WorldToGrid(positionVector);
+            var playerGridPos = GridUtils.WorldToGrid(playerPosition.Value);
+            
+            // Calcula direção para o player
+            var direction = GetDirectionToTarget(currentGridPos, playerGridPos);
+            
+            if (direction != Vector2I.Zero && !movement.IsMoving)
             {
-                behavior.StateTimer += deltaTime;
-                behavior.TimeSinceLastAction += deltaTime;
-
-                Vector2I decidedDirection = Vector2I.Zero;
-                bool shouldAttack = false;
-
-                switch (behavior.BehaviorType)
-                {
-                    case NPCBehaviorType.Idle:
-                        decidedDirection = HandleIdleBehavior(ref behavior);
-                        break;
-                        
-                    case NPCBehaviorType.Wander:
-                        decidedDirection = HandleWanderBehavior(ref behavior, position);
-                        break;
-                        
-                    case NPCBehaviorType.Patrol:
-                        decidedDirection = HandlePatrolBehavior(ref behavior, position);
-                        break;
-                        
-                    case NPCBehaviorType.Aggressive:
-                        (decidedDirection, shouldAttack) = HandleAggressiveBehavior(ref behavior, position);
-                        break;
-                }
-
-                // Aplicar decisão ao InputComponent
-                input.InputDirection = decidedDirection;
-                input.HasInput = decidedDirection != Vector2I.Zero;
-                input.AttackPressed = shouldAttack;
-                input.AttackJustPressed = shouldAttack && !input.AttackPressed;
+                movement.Direction = direction;
+                movement.StartGridPosition = currentGridPos;
+                movement.TargetGridPosition = currentGridPos + direction;
+                movement.Progress = 0.0f;
                 
-                if (decidedDirection != Vector2I.Zero)
-                {
-                    behavior.LastDirection = decidedDirection;
-                }
-            });
-        }
-
-        private Vector2I HandleIdleBehavior(ref BehaviorComponent behavior)
-        {
-            // Ficar parado na maior parte do tempo, ocasionalmente mover-se
-            if (behavior.StateTimer > behavior.IdleTime)
-            {
-                behavior.StateTimer = 0.0f;
-                // 20% chance de se mover aleatoriamente
-                if (_random.NextDouble() < 0.2)
-                {
-                    return GetRandomDirection();
-                }
+                aiState.LastKnownPlayerPosition = playerGridPos;
+                aiState.HasSeenPlayer = true;
             }
-            return Vector2I.Zero;
         }
+        
+        aiState.LastDecisionTime = 0.0f;
+    }
 
-        private Vector2I HandleWanderBehavior(ref BehaviorComponent behavior, PositionComponent position)
+    /// <summary>
+    /// Processa comportamento de fuga (fugir do player)
+    /// </summary>
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessFleeBehavior(
+        [Data] in float deltaTime,
+        ref BehaviourComponent behavior,
+        ref MovementComponent movement,
+        in PositionComponent position)
+    {
+        if (behavior.BehaviourType != NpcBehaviourType.Flee)
+            return;
+
+        var positionVector = position.ToVector2();
+        var playerPosition = FindNearestPlayer(positionVector);
+        
+        if (playerPosition.HasValue)
         {
-            // Alternar entre mover e parar
-            if (behavior.StateTimer > behavior.MoveTime)
-            {
-                behavior.StateTimer = 0.0f;
-                return GetRandomDirection();
-            }
+            var currentGridPos = GridUtils.WorldToGrid(positionVector);
+            var playerGridPos = GridUtils.WorldToGrid(playerPosition.Value);
             
-            return Vector2I.Zero;
-        }
-
-        private Vector2I HandlePatrolBehavior(ref BehaviorComponent behavior, PositionComponent position)
-        {
-            // Implementação simples de patrulha
-            if (behavior.PatrolTarget == Vector2I.Zero)
-            {
-                // Definir primeiro target de patrulha
-                behavior.PatrolTarget = position.GridPosition + GetRandomDirection() * 3;
-            }
-
-            // Mover em direção ao target
-            Vector2I direction = (behavior.PatrolTarget - position.GridPosition).Sign();
+            // Calcula direção oposta ao player
+            var direction = GetDirectionAwayFromTarget(currentGridPos, playerGridPos);
             
-            // Se chegou ao target, definir novo target
-            if (position.GridPosition == behavior.PatrolTarget)
+            if (direction != Vector2I.Zero && !movement.IsMoving)
             {
-                behavior.PatrolTarget = position.GridPosition + GetRandomDirection() * 3;
+                movement.Direction = direction;
+                movement.StartGridPosition = currentGridPos;
+                movement.TargetGridPosition = currentGridPos + direction;
+                movement.Progress = 0.0f;
             }
-
-            return direction;
         }
+    }
 
-        private (Vector2I direction, bool attack) HandleAggressiveBehavior(ref BehaviorComponent behavior, PositionComponent position)
+    /// <summary>
+    /// Encontra o player mais próximo
+    /// </summary>
+    private static QueryDescription FindNearestPlayerQuery()
+    {
+        return new QueryDescription()
+            .WithAll<LocalPlayerTag, PositionComponent>()
+            .WithNone<NpcTag>();
+    }
+    private Vector2? FindNearestPlayer(Vector2 npcPosition)
+    {
+        Vector2? nearestPlayer = null;
+        float nearestDistance = float.MaxValue;
+        
+        // Busca manual por entidades com LocalPlayerTag e PositionComponent
+        World.Query<LocalPlayerTag, PositionComponent>(FindNearestPlayerQuery(),
+            (Entity entity, ref LocalPlayerTag component, ref PositionComponent t1Component) =>
+                
         {
-            // Tentar encontrar o jogador (implementação básica)
-            // Por enquanto, comportamento similar ao wander mas com ataques ocasionais
-            Vector2I moveDirection = Vector2I.Zero;
-            bool shouldAttack = false;
-
-            if (behavior.StateTimer > behavior.MoveTime)
+            var distance = npcPosition.DistanceTo(t1Component.ToVector2());
+            if (distance < nearestDistance)
             {
-                behavior.StateTimer = 0.0f;
-                moveDirection = GetRandomDirection();
+                nearestDistance = distance;
+                nearestPlayer = t1Component.ToVector2();
             }
+        });
+        
+        // Só retorna se o player estiver próximo (raio de detecção)
+        return nearestDistance <= 5.0f ? nearestPlayer : null;
+    }
 
-            // Atacar ocasionalmente
-            if (behavior.TimeSinceLastAction > behavior.ActionCooldown)
-            {
-                behavior.TimeSinceLastAction = 0.0f;
-                shouldAttack = _random.NextDouble() < 0.3; // 30% chance de atacar
-            }
-
-            return (moveDirection, shouldAttack);
-        }
-
-        private Vector2I GetRandomDirection()
+    /// <summary>
+    /// Calcula direção para um alvo
+    /// </summary>
+    private Vector2I GetDirectionToTarget(Vector2I from, Vector2I to)
+    {
+        var diff = to - from;
+        
+        // Prioriza movimento horizontal/vertical
+        if (Mathf.Abs(diff.X) > Mathf.Abs(diff.Y))
         {
-            var directions = new[]
-            {
-                GameConstants.Directions.UP,
-                GameConstants.Directions.DOWN,
-                GameConstants.Directions.LEFT,
-                GameConstants.Directions.RIGHT,
-                Vector2I.Zero // Incluir possibilidade de não se mover
-            };
-
-            return directions[_random.Next(directions.Length)];
+            return new Vector2I(Mathf.Sign(diff.X), 0);
         }
+        else if (diff.Y != 0)
+        {
+            return new Vector2I(0, Mathf.Sign(diff.Y));
+        }
+        
+        return Vector2I.Zero;
+    }
+
+    /// <summary>
+    /// Calcula direção para fugir de um alvo
+    /// </summary>
+    private Vector2I GetDirectionAwayFromTarget(Vector2I from, Vector2I target)
+    {
+        var diff = from - target; // Inverte para fugir
+        
+        if (Mathf.Abs(diff.X) > Mathf.Abs(diff.Y))
+        {
+            return new Vector2I(Mathf.Sign(diff.X), 0);
+        }
+        else if (diff.Y != 0)
+        {
+            return new Vector2I(0, Mathf.Sign(diff.Y));
+        }
+        
+        return Vector2I.Zero;
     }
 }

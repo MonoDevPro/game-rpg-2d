@@ -1,166 +1,102 @@
+using System.Runtime.CompilerServices;
 using Arch.Core;
+using Arch.System;
+using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.ECS.Components;
-using GameRpg2D.Scripts.Constants;
-using GameRpg2D.Scripts.Utilities;
+using GameRpg2D.Scripts.ECS.Components.Tags;
+using GameRpg2D.Scripts.Core.Enums;
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Systems
+namespace GameRpg2D.Scripts.ECS;
+
+/// <summary>
+/// Sistema responsável por gerenciar animações de ataque (apenas visual)
+/// </summary>
+public partial class AttackSystem : BaseSystem<World, float>
 {
-    public class AttackSystem(World world)
+    public AttackSystem(World world) : base(world) { }
+
+    /// <summary>
+    /// Processa input de ataque para o player (apenas para animação)
+    /// </summary>
+    [Query]
+    [All<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessPlayerAttackInput(
+        [Data] in float deltaTime,
+        ref AttackComponent attack,
+        ref AttackConfigComponent config,
+        in LocalInputComponent input,
+        in AnimationComponent animation)
     {
-        private readonly QueryDescription _attackQuery = new QueryDescription()
-            .WithAll<AttackComponent, InputComponent, MovementComponent, AnimationComponent>();
+        // Atualiza timer de cooldown
+        config.LastAttackTime += deltaTime;
 
-        public void Update(float deltaTime)
+        // Só pode atacar se não estiver atacando e passou o cooldown
+        if (!attack.IsAttacking && input.AttackJustPressed && 
+            config.LastAttackTime >= config.AttackCooldown)
         {
-            world.Query(in _attackQuery, (ref AttackComponent attack, ref InputComponent input, ref MovementComponent movement, ref AnimationComponent animation) =>
-            {
-                // Atualizar timers
-                attack.TimeSinceLastAttack += deltaTime;
-                attack.ComboTimer += deltaTime;
-                
-                // Reset combo se passou do tempo limite E não está pressionando ataque (APENAS UMA VEZ)
-                if (attack.ComboTimer > attack.ComboWindow && !input.AttackPressed && attack.CanCombo)
-                {
-                    attack.ComboCount = 0;
-                    attack.CanCombo = false;
-                    attack.LockedAttackDirection = Vector2I.Zero;
-                    GD.Print("Combo expired - direction unlocked");
-                }
-                
-                // Reset direção travada quando solta o botão (APENAS UMA VEZ)
-                if (!input.AttackPressed && attack.LockedAttackDirection != Vector2I.Zero)
-                {
-                    attack.LockedAttackDirection = Vector2I.Zero;
-                    GD.Print("Attack button released - direction unlocked for next attack");
-                }
-
-                // Verificar se pode iniciar ataque
-                bool shouldStartAttack = false;
-                
-                // Primeiro ataque: apenas com JustPressed
-                if (input.AttackJustPressed && CanStartAttack(ref attack, ref movement))
-                {
-                    shouldStartAttack = true;
-                }
-                // Ataques contínuos: se está pressionado, não está atacando, passou cooldown e tem combo ativo
-                else if (input.AttackPressed && !attack.IsAttacking && 
-                         attack.TimeSinceLastAttack >= attack.AttackCooldown && 
-                         attack.CanCombo)
-                {
-                    shouldStartAttack = true;
-                }
-
-                if (shouldStartAttack)
-                {
-                    StartAttack(ref attack, ref input, ref movement, ref animation);
-                }
-
-                // Atualizar ataque em progresso
-                if (attack.IsAttacking)
-                {
-                    UpdateAttack(ref attack, ref movement, deltaTime);
-                }
-            });
-        }
-
-        private bool CanStartAttack(ref AttackComponent attack, ref MovementComponent movement)
-        {
-            // Pode atacar se:
-            // 1. Não está atacando atualmente
-            // 2. Passou o tempo de cooldown
-            // 3. Movimento não interfere mais no ataque (removido essa restrição)
-            return !attack.IsAttacking && 
-                   attack.TimeSinceLastAttack >= attack.AttackCooldown;
-        }
-
-        private void StartAttack(ref AttackComponent attack, ref InputComponent input, ref MovementComponent movement, ref AnimationComponent animation)
-        {
-            Vector2I attackDirection;
-            
-            GD.Print("Starting attack...");
-            
-            // Se é um combo (não é o primeiro ataque), usar direção travada
-            if (attack.CanCombo && attack.ComboCount > 0 && attack.LockedAttackDirection != Vector2I.Zero)
-            {
-                attackDirection = attack.LockedAttackDirection;
-                GD.Print($"Using locked attack direction for combo: {attackDirection}");
-            }
-            else
-            {
-                // Primeiro ataque ou novo combo - determinar nova direção
-                attackDirection = DetermineAttackDirection(input, movement, animation);
-                attack.LockedAttackDirection = attackDirection; // Travar direção para combos futuros
-                GD.Print($"New attack direction locked: {attackDirection}");
-            }
-            
-            // Configurar ataque
+            // Inicia animação de ataque
             attack.IsAttacking = true;
-            attack.AttackProgress = 0.0f;
-            attack.AttackDirection = attackDirection;
-            attack.TimeSinceLastAttack = 0.0f;
+            attack.AttackTimer = 0.0f;
+            attack.AttackDirection = animation.CurrentDirection;
+            attack.AttackDuration = config.AttackDuration;
             
-            // Sistema de combo melhorado
-            if (attack.CanCombo && attack.ComboCount < GameConstants.MAX_COMBO_COUNT)
-            {
-                attack.ComboCount++;
-                attack.ComboTimer = 0.0f;
-            }
-            else
-            {
-                attack.ComboCount = 1;
-                attack.CanCombo = false;
-            }
-            
-            GD.Print($"Attack started! Direction: {attackDirection}, Combo: {attack.ComboCount}, Locked Direction: {attack.LockedAttackDirection}");
+            config.LastAttackTime = 0.0f;
         }
+    }
 
-        private Vector2I DetermineAttackDirection(InputComponent input, MovementComponent movement, AnimationComponent animation)
+    /// <summary>
+    /// Processa duração da animação de ataque
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessAttackDuration(
+        [Data] in float deltaTime,
+        ref AttackComponent attack)
+    {
+        if (!attack.IsAttacking)
+            return;
+
+        attack.AttackTimer += deltaTime;
+
+        // Finaliza animação de ataque quando acabar a duração
+        if (attack.AttackTimer >= attack.AttackDuration)
         {
-            // Usar o DirectionUtils para centralizar a lógica de determinação de direção
-            return DirectionUtils.DetermineDirection(
-                input.InputDirection, 
-                movement.IsMoving ? movement.Direction : Vector2I.Zero, 
-                animation.LastDirection
-            );
+            attack.IsAttacking = false;
+            attack.AttackTimer = 0.0f;
         }
+    }
 
-        private void UpdateAttack(ref AttackComponent attack, ref MovementComponent movement, float deltaTime)
+    /// <summary>
+    /// Atualiza estado da animação baseado no ataque
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void UpdateAttackAnimation(
+        ref AnimationComponent animation,
+        in AttackComponent attack)
+    {
+        if (attack.IsAttacking)
         {
-            attack.AttackProgress += deltaTime / attack.AttackDuration;
-            
-            if (attack.AttackProgress >= 1.0f)
+            // Muda para animação de ataque
+            if (animation.CurrentState != AnimationState.Attack)
             {
-                // Ataque completo
-                attack.IsAttacking = false;
-                attack.AttackProgress = 0.0f;
-                
-                // Habilitar combo APENAS se foi um ataque bem-sucedido
-                if (attack.ComboCount >= 1)
-                {
-                    attack.CanCombo = true;
-                    attack.ComboTimer = 0.0f;
-                }
-                
-                GD.Print($"Attack finished! Combo count: {attack.ComboCount}, Can combo: {attack.CanCombo}");
+                animation.PreviousState = animation.CurrentState;
+                animation.CurrentState = AnimationState.Attack;
+                animation.CurrentDirection = attack.AttackDirection;
+                animation.HasChanged = true;
             }
         }
-
-        /// <summary>
-        /// Método para detectar entidades no alcance do ataque
-        /// </summary>
-        public void CheckAttackHits(ref AttackComponent attack, ref PositionComponent position)
+        else
         {
-            if (!attack.IsAttacking) return;
-            
-            // Calcular posição do ataque baseada na direção
-            Vector2I attackPosition = position.GridPosition + attack.AttackDirection;
-            
-            // Aqui você pode implementar lógica para detectar inimigos na posição
-            // Por exemplo, fazer query por entidades inimigas na posição calculada
-            
-            // Para debug, vamos apenas mostrar onde o ataque está acontecendo
-            GD.Print($"Attack hitting position: {attackPosition}");
+            // Volta para idle/walk se não estiver atacando
+            if (animation.CurrentState == AnimationState.Attack)
+            {
+                animation.PreviousState = animation.CurrentState;
+                animation.CurrentState = AnimationState.Idle;
+                animation.HasChanged = true;
+            }
         }
     }
 }

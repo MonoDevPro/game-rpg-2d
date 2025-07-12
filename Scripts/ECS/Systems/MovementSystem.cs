@@ -1,112 +1,207 @@
+using System.Runtime.CompilerServices;
+using Arch.Bus;
 using Arch.Core;
-using GameRpg2D.Scripts.Constants;
+using Arch.System;
+using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.ECS.Components;
+using GameRpg2D.Scripts.ECS.Events;
+using GameRpg2D.Scripts.ECS.Components.Tags;
+using GameRpg2D.Scripts.Utilities;
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Systems
+namespace GameRpg2D.Scripts.ECS;
+
+/// <summary>
+/// Sistema responsável pelo movimento das entidades no mundo
+/// </summary>
+public partial class MovementSystem : BaseSystem<World, float>
 {
-    public class MovementSystem(World world)
+    public MovementSystem(World world) : base(world) { }
+
+    /// <summary>
+    /// Processa o movimento das entidades que estão se movendo
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessMovement(
+        [Data] in float deltaTime,
+        ref MovementComponent movement,
+        ref PositionComponent position,
+        in MovementConfigComponent config)
     {
-        private readonly QueryDescription _movementQuery = new QueryDescription()
-            .WithAll<PositionComponent, MovementComponent, InputComponent>();
+        if (!movement.IsMoving)
+            return;
 
-        public void Update(float deltaTime)
-        {
-            world.Query(in _movementQuery, (ref PositionComponent position, ref MovementComponent movement, ref InputComponent input) =>
-            {
-                // Atualizar timer desde o último input
-                if (input.HasInput)
-                {
-                    movement.TimeSinceLastInput = 0.0f;
-                    movement.HasContinuousInput = true;
-                }
-                else
-                {
-                    movement.TimeSinceLastInput += deltaTime;
-                    
-                    // Parar movimento apenas após o delay
-                    if (movement.TimeSinceLastInput >= movement.InputStopDelay)
-                    {
-                        movement.HasContinuousInput = false;
-                    }
-                }
-                
-                // Iniciar novo movimento se há input e não está se movendo
-                if (movement.HasContinuousInput && input.InputDirection != Vector2I.Zero && !movement.IsMoving)
-                {
-                    StartMovement(ref position, ref movement, input.InputDirection);
-                }
-                
-                // Continuar movimento atual se está se movendo
-                if (movement.IsMoving)
-                {
-                    UpdateMovement(ref position, ref movement, deltaTime, input.InputDirection);
-                }
-            });
-        }
+        // Incrementa o progresso do movimento
+        movement.Progress += config.MoveSpeed * deltaTime;
 
-        private void StartMovement(ref PositionComponent position, ref MovementComponent movement, Vector2I direction)
+        // Se o movimento foi completado
+        if (movement.Progress >= 1.0f)
         {
-            // Calcular nova posição no grid
-            Vector2I newGridPosition = position.GridPosition + direction;
+            // Finaliza o movimento
+            movement.Progress = 1.0f;
+            position = new PositionComponent(GridUtils.GridToWorld(movement.TargetGridPosition));
             
-            // Configurar movimento
-            movement.Direction = direction;
-            movement.IsMoving = true;
-            movement.MoveProgress = 0.0f;
-            movement.StartWorldPosition = position.WorldPosition;
-            movement.TargetWorldPosition = new Vector2(newGridPosition.X * GameConstants.GRID_SIZE, newGridPosition.Y * GameConstants.GRID_SIZE);
-            
-            // Atualizar posição no grid
-            position.GridPosition = newGridPosition;
+            // Reset do movimento
+            movement.Direction = Vector2I.Zero;
+            movement.StartGridPosition = movement.TargetGridPosition;
+            movement.Progress = 0.0f;
         }
-
-        private void UpdateMovement(ref PositionComponent position, ref MovementComponent movement, float deltaTime, Vector2I inputDirection)
+        else
         {
-            // Incrementar progresso do movimento
-            movement.MoveProgress += movement.MoveSpeed * deltaTime;
+            // Interpola a posição atual
+            var startWorld = GridUtils.GridToWorld(movement.StartGridPosition);
+            var targetWorld = GridUtils.GridToWorld(movement.TargetGridPosition);
+            var currentPosition = startWorld.Lerp(targetWorld, movement.Progress);
             
-            if (movement.MoveProgress >= 1.0f)
-            {
-                // Movimento completo
-                movement.MoveProgress = 1.0f;
-                position.WorldPosition = movement.TargetWorldPosition;
-                
-                // Decidir se continua o movimento
-                if (movement.HasContinuousInput && inputDirection != Vector2I.Zero)
-                {
-                    // Continuar movimento na mesma direção ou nova direção
-                    Vector2I nextDirection = inputDirection;
-                    
-                    // Calcular próxima posição
-                    Vector2I nextGridPosition = position.GridPosition + nextDirection;
-                    
-                    // Configurar próximo movimento
-                    movement.Direction = nextDirection;
-                    movement.MoveProgress = 0.0f;
-                    movement.StartWorldPosition = position.WorldPosition;
-                    movement.TargetWorldPosition = new Vector2(nextGridPosition.X * GameConstants.GRID_SIZE, nextGridPosition.Y * GameConstants.GRID_SIZE);
-                    
-                    // Atualizar posição no grid
-                    position.GridPosition = nextGridPosition;
-                }
-                else
-                {
-                    // Parar movimento
-                    movement.IsMoving = false;
-                }
-            }
-            else
-            {
-                // Interpolação suave usando ease-out para movimento mais natural
-                float easedProgress = EaseOutQuad(movement.MoveProgress);
-                position.WorldPosition = movement.StartWorldPosition.Lerp(movement.TargetWorldPosition, easedProgress);
-            }
+            position = new PositionComponent(currentPosition);
         }
+    }
 
-        private float EaseOutQuad(float t)
+    /// <summary>
+    /// Processa o timer de parada de input para entidades que pararam de se mover
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessInputStopTimer(
+        [Data] in float deltaTime,
+        ref MovementComponent movement,
+        in MovementConfigComponent config)
+    {
+        if (movement.IsMoving || movement.HasContinuousInput)
+            return;
+
+        movement.TimeSinceLastInput += deltaTime;
+        
+        // Se passou tempo suficiente desde o último input, para completamente
+        if (movement.TimeSinceLastInput >= config.InputStopDelay)
         {
-            return 1.0f - (1.0f - t) * (1.0f - t);
+            movement.TimeSinceLastInput = 0.0f;
         }
+    }
+
+    /// <summary>
+    /// Aplica movimento baseado em velocidade para entidades com VelocityComponent
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ApplyVelocity(
+        [Data] in float deltaTime,
+        ref PositionComponent position,
+        ref VelocityComponent velocity)
+    {
+        position.X += velocity.X * deltaTime;
+        position.Y += velocity.Y * deltaTime;
+    }
+
+    /// <summary>
+    /// Zera a velocidade de entidades mortas ou inativas
+    /// </summary>
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    public void ResetVelocityForInactive(ref VelocityComponent velocity)
+    {
+        // Implementar lógica para zerar velocidade de NPCs inativos
+        // Por exemplo, quando estão em estado idle por muito tempo
+    }
+
+    /// <summary>
+    /// Processa movimento com física simples e detecção de colisão
+    /// </summary>
+    [Query]
+    [All<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessPlayerMovementWithPhysics(
+        [Data] in float deltaTime,
+        ref MovementComponent movement,
+        ref PositionComponent position,
+        in MovementConfigComponent config,
+        in Entity entity)
+    {
+        if (!movement.IsMoving)
+            return;
+
+        var oldGridPosition = movement.StartGridPosition;
+        
+        // Processa movimento normalmente
+        movement.Progress += config.MoveSpeed * deltaTime;
+
+        if (movement.Progress >= 1.0f)
+        {
+            // Finaliza o movimento
+            movement.Progress = 1.0f;
+            position = new PositionComponent(GridUtils.GridToWorld(movement.TargetGridPosition));
+            
+            // Dispara evento de movimento completo
+            var completedEvent = new MovementCompletedEvent(entity, oldGridPosition, movement.TargetGridPosition);
+            EventBus.Send(ref completedEvent);
+            
+            // Reset do movimento
+            movement.Direction = Vector2I.Zero;
+            movement.StartGridPosition = movement.TargetGridPosition;
+            movement.Progress = 0.0f;
+        }
+        else
+        {
+            // Interpola a posição atual
+            var startWorld = GridUtils.GridToWorld(movement.StartGridPosition);
+            var targetWorld = GridUtils.GridToWorld(movement.TargetGridPosition);
+            var currentPosition = startWorld.Lerp(targetWorld, movement.Progress);
+            
+            position = new PositionComponent(currentPosition);
+        }
+    }
+
+    /// <summary>
+    /// Sistema de movimento para NPCs com comportamento diferenciado
+    /// </summary>
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessNpcMovement(
+        [Data] in float deltaTime,
+        ref MovementComponent movement,
+        ref PositionComponent position,
+        in MovementConfigComponent config,
+        in Entity entity)
+    {
+        if (!movement.IsMoving)
+            return;
+
+        // NPCs podem ter velocidade diferente
+        var npcSpeed = config.MoveSpeed * 0.8f; // 20% mais lentos que o player
+        movement.Progress += npcSpeed * deltaTime;
+
+        if (movement.Progress >= 1.0f)
+        {
+            movement.Progress = 1.0f;
+            position = new PositionComponent(GridUtils.GridToWorld(movement.TargetGridPosition));
+            
+            // Dispara evento específico para NPCs
+            var completedEvent = new MovementCompletedEvent(entity, movement.StartGridPosition, movement.TargetGridPosition);
+            EventBus.Send(ref completedEvent);
+            
+            movement.Direction = Vector2I.Zero;
+            movement.StartGridPosition = movement.TargetGridPosition;
+            movement.Progress = 0.0f;
+        }
+        else
+        {
+            var startWorld = GridUtils.GridToWorld(movement.StartGridPosition);
+            var targetWorld = GridUtils.GridToWorld(movement.TargetGridPosition);
+            var currentPosition = startWorld.Lerp(targetWorld, movement.Progress);
+            
+            position = new PositionComponent(currentPosition);
+        }
+    }
+
+    /// <summary>
+    /// Dispara evento de movimento completo
+    /// </summary>
+    public void MovementCompleted(Entity entity, Vector2I oldGridPosition, Vector2I newGridPosition)
+    {
+        var eventCompleted = new MovementCompletedEvent(entity, oldGridPosition, newGridPosition);
+        // Dispara evento de movimento completo
+        EventBus.Send(ref eventCompleted);
     }
 }

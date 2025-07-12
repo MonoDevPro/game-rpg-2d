@@ -2,18 +2,6 @@
 
 [ext_resource type="Texture2D" uid="uid://eh1vji8dd7bk" path="res://Resources/Sprites/Archer/Female/sprite.png" id="1_ovc23"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_q2vbb"]
-atlas = ExtResource("1_ovc23")
-region = Rect2(704, 0, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_yd4hx"]
-atlas = ExtResource("1_ovc23")
-region = Rect2(768, 0, 64, 64)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_6vpwt"]
-atlas = ExtResource("1_ovc23")
-region = Rect2(832, 0, 64, 64)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_dolef"]
 atlas = ExtResource("1_ovc23")
 region = Rect2(704, 64, 64, 64)
@@ -170,22 +158,20 @@ region = Rect2(320, 192, 64, 64)
 atlas = ExtResource("1_ovc23")
 region = Rect2(384, 192, 64, 64)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_q2vbb"]
+atlas = ExtResource("1_ovc23")
+region = Rect2(704, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yd4hx"]
+atlas = ExtResource("1_ovc23")
+region = Rect2(768, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6vpwt"]
+atlas = ExtResource("1_ovc23")
+region = Rect2(832, 0, 64, 64)
+
 [resource]
 animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_q2vbb")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_yd4hx")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_6vpwt")
-}],
-"loop": true,
-"name": &"attack_down",
-"speed": 5.0
-}, {
 "frames": [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_dolef")
@@ -356,5 +342,19 @@ animations = [{
 }],
 "loop": true,
 "name": &"move_up",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q2vbb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yd4hx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6vpwt")
+}],
+"loop": true,
+"name": &"s",
 "speed": 5.0
 }]

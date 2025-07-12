@@ -59,10 +59,10 @@ public partial class Player : CharacterBody2D
             return;
         }
             
-        _world = GameManager.Instance.World;
+        _world = GameManager.Instance.Ecs.World;
         _sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
         _sprite.SpriteFrames = AssetService.Instance.GetSpriteFrames(Vocation, Gender);
-        _sprite.Play();
+        _sprite.Play("idle_down"); // Iniciar com animação idle para baixo
             
         // Validar recursos antes de continuar
         if (!ValidateResources())
@@ -72,25 +72,27 @@ public partial class Player : CharacterBody2D
         }
             
         // Criar entidade ECS para o jogador LOCAL
-        var positionComponent = new PositionComponent(StartGridPosition);
         _entity = _world.Create(
-            positionComponent,
-            new MovementComponent(MoveSpeed, GameConstants.INPUT_STOP_DELAY),
-            new InputComponent(),
             new NodeComponent(this),
-            new AnimationComponent(_sprite),
-            new AttackComponent(GameConstants.DEFAULT_ATTACK_DURATION, GameConstants.DEFAULT_ATTACK_RANGE, GameConstants.DEFAULT_ATTACK_COOLDOWN),
-            new LocalPlayerTag() // Marca como jogador local
+            new PositionComponent(StartGridPosition),
+            new AttackComponent(),
+            new AttackConfigComponent(GameConstants.DEFAULT_ATTACK_DURATION, GameConstants.DEFAULT_ATTACK_COOLDOWN),
+            new MovementComponent(),
+            new MovementConfigComponent(MoveSpeed),
+            new AnimationComponent(),
+            new AnimatedSpriteComponent(_sprite),
+            new LocalInputComponent(),
+            new BufferedInputComponent(),
+            new LocalPlayerTag()
         );
 
         // Posicionar o nó na posição inicial do grid
-        Position = positionComponent.WorldPosition;
+        Position = StartGridPosition * GameConstants.GRID_SIZE;
             
         // Verifica se a entidade foi criada corretamente
         if (!_world.IsAlive(_entity))
         {
             GD.PrintErr("O mundo ECS não está ativo ou a entidade foi destruída.");
-            return;
         }
     }
         

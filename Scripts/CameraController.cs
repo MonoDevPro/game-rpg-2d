@@ -22,13 +22,13 @@ namespace GameRpg2D.Scripts
 
         private void InitializeCamera()
         {
-            if (GameManager.Instance?.World != null)
+            if (GameManager.Instance.Ecs.World != null)
             {
-                _world = GameManager.Instance.World;
+                _world = GameManager.Instance.Ecs.World;
                 
                 // Query para encontrar entidades com InputComponent (assumindo que apenas o jogador tem)
                 _playerQuery = new QueryDescription()
-                    .WithAll<LocalPlayerTag, PositionComponent, InputComponent>();
+                    .WithAll<LocalPlayerTag, PositionComponent, LocalInputComponent>();
                 
                 // Configurar câmera
                 Enabled = true;
@@ -49,7 +49,7 @@ namespace GameRpg2D.Scripts
             // Encontrar a posição do jogador
             _world.Query(in _playerQuery, (ref PositionComponent position) =>
             {
-                Vector2 targetPosition = position.WorldPosition;
+                Vector2 targetPosition = new(position.X, position.Y);
                 
                 if (SmoothFollow)
                 {

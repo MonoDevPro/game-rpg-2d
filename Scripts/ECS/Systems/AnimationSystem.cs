@@ -1,137 +1,152 @@
+using System.Runtime.CompilerServices;
 using Arch.Core;
-using GameRpg2D.Scripts.ECS.Components;
+using Arch.System;
+using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Constants;
+using GameRpg2D.Scripts.Core.Enums;
+using GameRpg2D.Scripts.ECS.Components;
+using GameRpg2D.Scripts.ECS.Components.Tags;
 using GameRpg2D.Scripts.Utilities;
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Systems
+namespace GameRpg2D.Scripts.ECS;
+
+/// <summary>
+/// Sistema responsável por gerenciar animações das entidades
+/// </summary>
+public partial class AnimationSystem : BaseSystem<World, float>
 {
-    public class AnimationSystem(World world)
+    public AnimationSystem(World world) : base(world) { }
+
+    /// <summary>
+    /// Atualiza estado da animação baseado no movimento
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void UpdateAnimationState(
+        ref AnimationComponent animation,
+        in MovementComponent movement)
     {
-        private readonly QueryDescription _animationQuery = new QueryDescription()
-            .WithAll<MovementComponent, AnimationComponent, AttackComponent>();
-
-        public void Update()
+        var newState = movement.IsMoving ? AnimationState.Walk : AnimationState.Idle;
+        
+        if (animation.CurrentState != newState)
         {
-            world.Query(in _animationQuery, (ref MovementComponent movement, ref AnimationComponent animation, ref AttackComponent attack) =>
-            {
-                if (!IsValidAnimatedSprite(animation.AnimatedSprite))
-                    return;
-
-                // Detectar mudança de estado de ataque para forçar atualização
-                bool wasAttacking = animation.CurrentAnimation.StartsWith("attack_");
-                bool isCurrentlyAttacking = attack.IsAttacking;
-
-                // Prioridade: Ataque > Movimento > Idle
-                if (isCurrentlyAttacking)
-                {
-                    UpdateAttackAnimation(ref animation, ref attack);
-                    // Atualizar direção de movimento mesmo durante ataque para quando parar
-                    if (movement.IsMoving)
-                    {
-                        animation.LastDirection = movement.Direction;
-                    }
-                }
-                else
-                {
-                    // Se estava atacando e agora não está mais, forçar atualização
-                    if (wasAttacking)
-                    {
-                        ForceUpdateToMovementAnimation(ref animation, ref movement);
-                    }
-                    else
-                    {
-                        UpdateMovementAnimation(ref animation, ref movement);
-                    }
-                }
-            });
+            animation.PreviousState = animation.CurrentState;
+            animation.CurrentState = newState;
+            animation.HasChanged = true;
         }
+    }
 
-        private bool IsValidAnimatedSprite(AnimatedSprite2D sprite)
+    /// <summary>
+    /// Atualiza direção da animação baseado no movimento
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void UpdateAnimationDirection(
+        ref AnimationComponent animation,
+        in MovementComponent movement)
+    {
+        if (movement.Direction != Vector2I.Zero)
         {
-            return sprite != null && GodotObject.IsInstanceValid(sprite);
-        }
-
-        private void ForceUpdateToMovementAnimation(ref AnimationComponent animation, ref MovementComponent movement)
-        {
-            // Forçar atualização da animação após o ataque terminar
-            string newAnimation;
+            var newDirection = movement.Direction.ToDirection();
             
-            if (movement.IsMoving)
+            if (animation.CurrentDirection != newDirection)
             {
-                newAnimation = DirectionUtils.GetAnimationName(AnimationType.Move, movement.Direction);
-                animation.IsMoving = true;
-                animation.LastDirection = movement.Direction;
+                animation.PreviousDirection = animation.CurrentDirection;
+                animation.CurrentDirection = newDirection;
+                animation.HasChanged = true;
             }
-            else
-            {
-                // Usar a última direção para determinar a animação idle
-                Vector2I idleDirection = animation.LastDirection != Vector2I.Zero ? animation.LastDirection : GameConstants.Directions.DOWN;
-                newAnimation = DirectionUtils.GetAnimationName(AnimationType.Idle, idleDirection);
-                animation.IsMoving = false;
-            }
-            
-            PlayAnimation(ref animation, newAnimation, GameConstants.DEFAULT_ANIMATION_SPEED_SCALE);
-            GD.Print($"Forced animation update after attack: {newAnimation}");
         }
+    }
 
-        private void UpdateAttackAnimation(ref AnimationComponent animation, ref AttackComponent attack)
+    /// <summary>
+    /// Aplica animações no AnimatedSprite2D
+    /// </summary>
+    [Query]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ApplyAnimations(
+        ref AnimationComponent animation,
+        in AnimatedSpriteComponent sprite)
+    {
+        if (!animation.HasChanged || sprite.AnimatedSprite == null)
+            return;
+
+        if (!GodotObject.IsInstanceValid(sprite.AnimatedSprite))
+            return;
+
+        var animationName = GetAnimationName(animation.CurrentState, animation.CurrentDirection);
+        
+        if (sprite.AnimatedSprite.SpriteFrames != null && 
+            sprite.AnimatedSprite.SpriteFrames.HasAnimation(animationName))
         {
-            string attackAnimation = DirectionUtils.GetAnimationName(AnimationType.Attack, attack.AttackDirection);
+            sprite.AnimatedSprite.Animation = animationName;
+            sprite.AnimatedSprite.SpeedScale = animation.AnimationSpeed;
             
-            if (attackAnimation != animation.CurrentAnimation)
+            if (sprite.AutoPlay && !sprite.AnimatedSprite.IsPlaying())
             {
-                // Calcular velocidade baseada na duração do ataque
-                float speedScale = GameConstants.DEFAULT_ANIMATION_SPEED_SCALE / attack.AttackDuration;
-                PlayAnimation(ref animation, attackAnimation, speedScale);
+                sprite.AnimatedSprite.Play();
             }
         }
 
-        private void UpdateMovementAnimation(ref AnimationComponent animation, ref MovementComponent movement)
-        {
-            // Determinar se está se movendo
-            bool isCurrentlyMoving = movement.IsMoving;
-            
-            // Se mudou o estado de movimento ou a direção, atualizar animação
-            if (isCurrentlyMoving != animation.IsMoving || 
-                (isCurrentlyMoving && movement.Direction != animation.LastDirection))
-            {
-                UpdateAnimation(ref animation, movement.Direction, isCurrentlyMoving);
-            }
-            
-            // Atualizar estado
-            animation.IsMoving = isCurrentlyMoving;
-            if (isCurrentlyMoving)
-            {
-                animation.LastDirection = movement.Direction;
-            }
-        }
+        animation.HasChanged = false;
+    }
 
-        private void UpdateAnimation(ref AnimationComponent animation, Vector2I direction, bool isMoving)
+    /// <summary>
+    /// Processa animações específicas para o player
+    /// </summary>
+    [Query]
+    [All<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessPlayerAnimations(
+        ref AnimationComponent animation,
+        in AnimatedSpriteComponent sprite,
+        in MovementComponent movement)
+    {
+        // Player pode ter animações especiais
+        if (movement.IsMoving)
         {
-            AnimationType animationType = isMoving ? AnimationType.Move : AnimationType.Idle;
-            Vector2I targetDirection = isMoving ? direction : 
-                (animation.LastDirection != Vector2I.Zero ? animation.LastDirection : GameConstants.Directions.DOWN);
-            
-            string newAnimation = DirectionUtils.GetAnimationName(animationType, targetDirection);
-            
-            // Só trocar animação se for diferente da atual
-            if (newAnimation != animation.CurrentAnimation)
-            {
-                PlayAnimation(ref animation, newAnimation, GameConstants.DEFAULT_ANIMATION_SPEED_SCALE);
-            }
-            else if (!animation.AnimatedSprite.IsPlaying())
-            {
-                // Garantir que a animação está tocando
-                animation.AnimatedSprite.Play(newAnimation);
-            }
+            animation.AnimationSpeed = 1.0f;
         }
+        else
+        {
+            animation.AnimationSpeed = 0.5f; // Idle mais lento
+        }
+    }
 
-        private void PlayAnimation(ref AnimationComponent animation, string animationName, float speedScale)
+    /// <summary>
+    /// Processa animações específicas para NPCs
+    /// </summary>
+    [Query]
+    [All<NpcTag>, None<LocalPlayerTag>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void ProcessNpcAnimations(
+        ref AnimationComponent animation,
+        in AnimatedSpriteComponent sprite,
+        in MovementComponent movement)
+    {
+        // NPCs podem ter comportamentos de animação diferentes
+        if (movement.IsMoving)
         {
-            animation.CurrentAnimation = animationName;
-            animation.AnimatedSprite.Play(animationName);
-            animation.AnimatedSprite.SpeedScale = speedScale;
+            animation.AnimationSpeed = 0.8f; // Mais lentos que o player
         }
+        else
+        {
+            animation.AnimationSpeed = 0.3f; // Idle bem lento
+        }
+    }
+
+    /// <summary>
+    /// Gera o nome da animação baseado no estado e direção
+    /// </summary>
+    private static string GetAnimationName(AnimationState state, Direction direction)
+    {
+        return state switch
+        {
+            AnimationState.Idle => $"idle_{direction.ToString().ToLower()}",
+            AnimationState.Walk => $"walk_{direction.ToString().ToLower()}",
+            AnimationState.Attack => $"attack_{direction.ToString().ToLower()}",
+            AnimationState.Death => "death",
+            _ => "idle_down"
+        };
     }
 }

@@ -1,9 +1,16 @@
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Components
+namespace GameRpg2D.Scripts.ECS.Components;
+
+[Component]
+public struct NodeComponent
 {
-    public struct NodeComponent(Node2D node)
+    public Node2D Node;
+    public bool IsVisible;
+    
+    public NodeComponent(Node2D node)
     {
-        public readonly Node2D Node = node;
+        Node = node;
+        IsVisible = true;
     }
 }

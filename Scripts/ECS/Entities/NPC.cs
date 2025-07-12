@@ -20,7 +20,7 @@ namespace GameRpg2D.Scripts.ECS.Entities
         #region Parameters
         [Export] public string NPCType = "Guard";
         [Export] public int NPCId;
-        [Export] public NPCBehaviorType BehaviorType = NPCBehaviorType.Idle;
+        [Export] public NpcBehaviourType BehaviourType = NpcBehaviourType.Idle;
         [Export] public Vocation NPCVocation = Vocation.Mage;
         [Export] public Gender NPCGender = Gender.Male;
         [Export] public float MoveSpeed = GameConstants.DEFAULT_MOVE_SPEED * 0.8f;
@@ -48,12 +48,12 @@ namespace GameRpg2D.Scripts.ECS.Entities
 
         public override void _Ready()
         {
-            _world = GameManager.Instance.World;
+            _world = GameManager.Instance.Ecs.World;
             _sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
             
             // Configurar sprite
             _sprite.SpriteFrames = AssetService.Instance.GetSpriteFrames(NPCVocation, NPCGender);
-            _sprite.Play();
+            _sprite.Play("idle_down"); // Iniciar com animação idle para baixo
             
             if (!ValidateResources())
             {
@@ -62,24 +62,22 @@ namespace GameRpg2D.Scripts.ECS.Entities
             }
             
             // Criar entidade ECS para o NPC
-            var positionComponent = new PositionComponent(StartGridPosition);
             _entity = _world.Create(
-                positionComponent,
-                new MovementComponent(MoveSpeed, GameConstants.INPUT_STOP_DELAY),
-                new InputComponent(),
-                new BehaviorComponent(BehaviorType),
                 new NodeComponent(this),
-                new AnimationComponent(_sprite),
-                new AttackComponent(
-                    GameConstants.DEFAULT_ATTACK_DURATION * 1.2f, 
-                    GameConstants.DEFAULT_ATTACK_RANGE, 
-                    GameConstants.DEFAULT_ATTACK_COOLDOWN * 1.5f
-                ),
-                new NPCTag(NPCType, NPCId)
+                new PositionComponent(StartGridPosition),
+                new AttackComponent(),
+                new AttackConfigComponent(GameConstants.DEFAULT_ATTACK_DURATION, GameConstants.DEFAULT_ATTACK_COOLDOWN),
+                new MovementComponent(),
+                new MovementConfigComponent(MoveSpeed),
+                new BehaviourComponent(BehaviourType),
+                new AIStateComponent(),
+                new AnimationComponent(),
+                new AnimatedSpriteComponent(_sprite),
+                new NpcTag(NPCType, NPCId)
             );
 
             // Posicionar o nó na posição inicial do grid
-            Position = positionComponent.WorldPosition;
+            Position = StartGridPosition * GameConstants.GRID_SIZE;
             
             if (!_world.IsAlive(_entity))
             {
