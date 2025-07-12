@@ -6,7 +6,7 @@ using GameRpg2D.Scripts.ECS.Systems.Input;
 using GameRpg2D.Scripts.ECS.Systems.Movement;
 using Godot;
 
-namespace GameRpg2D.Scripts.Infrastructure;
+namespace GameRpg2D.Scripts.ECS.Infrastructure;
 
 public sealed class EcsRunner
 {

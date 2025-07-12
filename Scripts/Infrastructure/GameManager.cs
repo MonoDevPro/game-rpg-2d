@@ -1,3 +1,4 @@
+using GameRpg2D.Scripts.ECS.Infrastructure;
 using Godot;
 
 namespace GameRpg2D.Scripts.Infrastructure;

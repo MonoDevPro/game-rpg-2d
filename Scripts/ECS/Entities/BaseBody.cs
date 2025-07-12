@@ -3,6 +3,7 @@ using Arch.Core;
 using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.ECS.Components;
+using GameRpg2D.Scripts.ECS.Infrastructure;
 using GameRpg2D.Scripts.Infrastructure;
 using Godot;
 
