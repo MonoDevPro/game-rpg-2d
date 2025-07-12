@@ -5,5 +5,4 @@ public enum AnimationState : byte
     Idle,
     Walk,
     Attack,
-    Death,
 }

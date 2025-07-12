@@ -4,8 +4,4 @@ public enum NpcBehaviourType
 {
     Idle,
     Patrol,
-    Aggressive,
-    Flee,
-    Guard,
-    Wander
 }

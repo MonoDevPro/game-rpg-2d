@@ -12,8 +12,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="README.md" />
+    <Content Include=".github\prompts\*.md" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Scripts\ECS\Systems\Handler\" />
+    <Folder Include="Scripts\ECS\Systems\" />
   </ItemGroup>
 </Project>

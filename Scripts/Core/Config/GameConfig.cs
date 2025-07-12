@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GameRpg2D.Scripts.Config;
+namespace GameRpg2D.Scripts.Core.Config;
 
 // TODO: Implement this class to manage game settings.
 

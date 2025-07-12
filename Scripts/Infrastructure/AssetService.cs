@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GameRpg2D.Scripts.Constants;
+using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
 using Godot;
 

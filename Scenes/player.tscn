@@ -1,7 +1,6 @@
-[gd_scene load_steps=4 format=3 uid="uid://dg2wodn3kiqy7"]
+[gd_scene load_steps=3 format=3 uid="uid://dg2wodn3kiqy7"]
 
 [ext_resource type="Script" uid="uid://b2tkdk8dbuosk" path="res://Scripts/ECS/Entities/Player.cs" id="1_cvnsp"]
-[ext_resource type="Script" uid="uid://dw1wxu6px4gv2" path="res://Scripts/CameraController.cs" id="2_6t5aa"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6t5aa"]
 
@@ -10,10 +9,9 @@ script = ExtResource("1_cvnsp")
 Vocation = 1
 
 [node name="Camera2D" type="Camera2D" parent="."]
-script = ExtResource("2_6t5aa")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-animation = &"idle_down"
+animation = &""
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, 22)

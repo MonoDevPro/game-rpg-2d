@@ -1,4 +1,4 @@
-namespace GameRpg2D.Scripts.Constants
+namespace GameRpg2D.Scripts.Core.Constants
 {
     /// <summary>
     /// Constantes para caminhos de recursos do jogo
@@ -24,9 +24,9 @@ namespace GameRpg2D.Scripts.Constants
         // Cenas principais
         public static class Scenes
         {
-            public const string MAIN = SCENES_DIR + "Main.tscn";
-            public const string MENU = SCENES_DIR + "Menu.tscn";
-            public const string GAME = SCENES_DIR + "Game.tscn";
+            public const string MAIN = SCENES_DIR + "main.tscn";
+            public const string MENU = SCENES_DIR + "menu.tscn";
+            public const string GAME = SCENES_DIR + "game.tscn";
         }
         
         // Configurações
