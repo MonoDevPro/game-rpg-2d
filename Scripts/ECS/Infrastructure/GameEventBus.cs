@@ -49,10 +49,10 @@ public static class GameEventBus
     public static void Publish<T>(T eventData) where T : struct
     {
         var eventType = typeof(T);
-        
-        if (!Subscribers.TryGetValue(eventType, out var subscriber1)) 
+
+        if (!Subscribers.TryGetValue(eventType, out var subscriber1))
             return;
-        
+
         foreach (var subscriber in subscriber1)
             if (subscriber is Action<T> handler)
                 handler(eventData);
@@ -83,6 +83,33 @@ public static class GameEventBus
     {
         Publish(eventData);
         GD.Print($"[EventBus] Entity {eventData.EntityId} animation changed from {eventData.OldState} to {eventData.NewState}");
+    }
+
+    /// <summary>
+    /// Publica um evento de movimento corrigido por colisão
+    /// </summary>
+    public static void PublishMovementCorrected(MovementCorrectedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} movement corrected from {eventData.OriginalDirection} to {eventData.CorrectedDirection}");
+    }
+
+    /// <summary>
+    /// Publica um evento de movimento bloqueado
+    /// </summary>
+    public static void PublishMovementBlocked(MovementBlockedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} movement blocked in direction {eventData.BlockedDirection}");
+    }
+
+    /// <summary>
+    /// Publica um evento de colisão detectada
+    /// </summary>
+    public static void PublishCollisionDetected(CollisionDetectedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} collision detected at {eventData.CollisionPosition}");
     }
 
     #endregion

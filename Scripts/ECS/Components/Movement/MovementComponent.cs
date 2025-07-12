@@ -1,8 +1,7 @@
 using GameRpg2D.Scripts.Core.Enums;
-using GameRpg2D.Scripts.ECS.Components;
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Components.Core;
+namespace GameRpg2D.Scripts.ECS.Components.Movement;
 
 /// <summary>
 /// Componente responsável pelo movimento em grid das entidades

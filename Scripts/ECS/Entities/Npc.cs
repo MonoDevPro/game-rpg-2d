@@ -3,7 +3,7 @@ using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components.Animation;
 using GameRpg2D.Scripts.ECS.Components.Combat;
-using GameRpg2D.Scripts.ECS.Components.Core;
+using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Components.Tags;
 using Godot;
 

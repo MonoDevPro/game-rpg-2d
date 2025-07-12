@@ -3,6 +3,7 @@ using Arch.Core;
 using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.ECS.Components;
+using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.Infrastructure;
 using Godot;
 
@@ -69,6 +70,9 @@ public abstract partial class BaseBody : CharacterBody2D
             GD.Print($"[ECS] Entidade {Entity.Id} criada com sucesso.");
 
         RegisterComponents();
+
+        // Adiciona componente de colisão automaticamente
+        AddCollisionComponent();
 
         // Inicializa o sprite e animações
         InitializeSprite();
@@ -175,5 +179,26 @@ public abstract partial class BaseBody : CharacterBody2D
 
         // Não reproduz animação aqui - deixa para o AnimationSystem fazer
         // O AnimationSystem vai definir a animação correta baseado no estado inicial
+    }
+
+    /// <summary>
+    /// Adiciona componente de colisão automaticamente
+    /// </summary>
+    private void AddCollisionComponent()
+    {
+        // Configura componente de colisão
+        var collisionComponent = new CollisionComponent
+        {
+            Body = this,
+            CollisionMask = CollisionMask,
+            CollisionLayer = CollisionLayer,
+            IsColliding = false,
+            LastValidPosition = GlobalPosition,
+            BlockedDirections = CollisionDirections.None,
+            DetectionRadius = GameConstants.GRID_SIZE / 2.0f,
+            EnableDebugVisualization = false // Pode ser habilitado via Export se necessário
+        };
+
+        AddComponent(collisionComponent);
     }
 }

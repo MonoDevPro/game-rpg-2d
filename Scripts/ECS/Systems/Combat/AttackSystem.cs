@@ -5,8 +5,8 @@ using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.ECS.Components.Animation;
 using GameRpg2D.Scripts.ECS.Components.Combat;
-using GameRpg2D.Scripts.ECS.Components.Core;
 using GameRpg2D.Scripts.ECS.Components.Input;
+using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Components.Tags;
 using GameRpg2D.Scripts.ECS.Events;
 using GameRpg2D.Scripts.ECS.Infrastructure;
@@ -80,7 +80,7 @@ public partial class AttackSystem : BaseSystem<World, float>
     /// <summary>
     /// Executa os efeitos do ataque (dano, hit detection, etc.)
     /// </summary>
-    private void ExecuteAttackEffect(AttackComponent attack, int attackerId)
+    private void ExecuteAttackEffect(in AttackComponent attack, int attackerId)
     {
         // Publica evento de ataque
         GameEventBus.PublishEntityAttack(new EntityAttackEvent(

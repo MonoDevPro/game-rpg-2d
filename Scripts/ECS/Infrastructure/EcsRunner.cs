@@ -4,6 +4,7 @@ using GameRpg2D.Scripts.ECS.Systems.Animation;
 using GameRpg2D.Scripts.ECS.Systems.Combat;
 using GameRpg2D.Scripts.ECS.Systems.Input;
 using GameRpg2D.Scripts.ECS.Systems.Movement;
+using GameRpg2D.Scripts.ECS.Systems.Physics;
 using Godot;
 
 namespace GameRpg2D.Scripts.ECS.Infrastructure;
@@ -27,9 +28,10 @@ public sealed class EcsRunner
             "ECS Systems",
             // Ordem de execução dos sistemas
             new InputSystem(World),      // 1. Processa input
-            new MovementSystem(World),   // 2. Processa movimento
-            new AttackSystem(World),     // 3. Processa ataque
-            new AnimationSystem(World)   // 4. Atualiza animações
+            new CollisionSystem(World),  // 2. Valida colisões
+            new MovementSystem(World),   // 3. Processa movimento
+            new AttackSystem(World),     // 4. Processa ataque
+            new AnimationSystem(World)   // 5. Atualiza animações
         );
 
         _deltaGroup.Initialize();
