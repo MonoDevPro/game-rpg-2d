@@ -17,7 +17,7 @@ public abstract partial class BaseBody : CharacterBody2D
 {
     // Resources
     private AnimatedSprite2D _sprite;
-    
+
     #region Parameters
     /// <summary>
     /// Caminho para o nó EcsRunner registrado como singleton/autoload
@@ -71,7 +71,7 @@ public abstract partial class BaseBody : CharacterBody2D
             GD.Print($"[ECS] Entidade {Entity.Id} criada com sucesso.");
 
         RegisterComponents();
-        
+
         // Inicializa o sprite e animações
         InitializeSprite();
     }
@@ -104,7 +104,7 @@ public abstract partial class BaseBody : CharacterBody2D
             GD.PrintErr($"Component {typeof(T).Name} já registrado em {Entity.Id}.");
             return false;
         }
-        
+
         GD.Print($"Adicionando component {typeof(T).Name} na entidade {Entity.Id}.");
         World.Add(Entity, component);
         return true;
@@ -120,17 +120,17 @@ public abstract partial class BaseBody : CharacterBody2D
             GD.PrintErr($"Component {typeof(T).Name} não existe em {Entity.Id}.");
             return false;
         }
-        
+
         GD.Print($"Removendo component {typeof(T).Name} de {Entity.Id}.");
         World.Remove<T>(Entity);
         return true;
     }
-    
+
     public Entity GetEntity()
     {
         if (!CheckAlive())
             throw new InvalidOperationException($"Entidade {Entity.Id} não está viva no ECS.");
-        
+
         return Entity;
     }
 
@@ -138,7 +138,7 @@ public abstract partial class BaseBody : CharacterBody2D
     /// Subclasses devem implementar para registrar seus próprios components
     /// </summary>
     protected abstract void RegisterComponents();
-    
+
     /// <summary>
     /// Método chamado quando a entidade é removida do ECS
     /// </summary>
@@ -149,33 +149,33 @@ public abstract partial class BaseBody : CharacterBody2D
             World.Destroy(Entity);
         base._ExitTree();
     }
-    
+
     /// <summary>
     /// Verifica se a entidade está viva no ECS
     /// </summary>
     protected bool CheckAlive()
     {
-        if (World.IsAlive(Entity)) 
+        if (World.IsAlive(Entity))
             return true;
-        
+
         GD.PrintErr($"Entidade {Entity.Id} não está viva no ECS.");
         return false;
     }
-    
+
     private void InitializeSprite()
     {
         _sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-    
+
         if (_sprite == null)
             throw new InvalidOperationException("AnimatedSprite2D não encontrado como filho.");
-    
+
         var spriteFrames = AssetService.Instance?.GetSpriteFrames(Vocation, Gender);
         if (spriteFrames == null)
             throw new InvalidOperationException($"SpriteFrames não encontrado para {Vocation}/{Gender}");
-    
+
         _sprite.SpriteFrames = spriteFrames;
-        
-        if (SpriteFrames.HasAnimation(DefaultAnimation))
+
+        if (spriteFrames.HasAnimation(DefaultAnimation))
             _sprite.Play(DefaultAnimation);
         else
             GD.PrintErr($"Animação padrão '{DefaultAnimation}' não encontrada em SpriteFrames.");
