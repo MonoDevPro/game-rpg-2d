@@ -5,3 +5,5 @@
 /obj
 .editorconfig
 .idea/
+*.uid
+*.DotSettings
