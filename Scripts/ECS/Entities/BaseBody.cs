@@ -197,7 +197,7 @@ public abstract partial class BaseBody : CharacterBody2D
             LastValidPosition = GlobalPosition,
             BlockedDirections = CollisionDirections.None,
             DetectionRadius = GameConstants.GRID_SIZE / 2.0f,
-            EnableDebugVisualization = EnableDebugCollision // Pode ser habilitado via Export se necessário
+            EnableDebugVisualization = EnableDebugCollision // Pode ser habilitado
         };
 
         AddComponent(collisionComponent);

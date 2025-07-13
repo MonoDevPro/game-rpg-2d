@@ -112,6 +112,31 @@ public static class GameEventBus
         GD.Print($"[EventBus] Entity {eventData.EntityId} collision detected at {eventData.CollisionPosition}");
     }
 
+    // Patrol Events
+    public static void PublishPatrolWaypointReached(PatrolWaypointReachedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} reached waypoint {eventData.WayPointIndex} at {eventData.WayPoint}");
+    }
+
+    public static void PublishPatrolStateChanged(PatrolStateChangedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} patrol state changed from {eventData.OldState} to {eventData.NewState}");
+    }
+
+    public static void PublishPatrolCompleted(PatrolCompletedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} patrol completed at {eventData.FinalWayPoint}");
+    }
+
+    public static void PublishPatrolInterrupted(PatrolInterruptedEvent eventData)
+    {
+        Publish(eventData);
+        GD.Print($"[EventBus] Entity {eventData.EntityId} patrol interrupted: {eventData.Reason}");
+    }
+
     #endregion
 
     /// <summary>

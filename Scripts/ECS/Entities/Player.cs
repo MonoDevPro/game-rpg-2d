@@ -1,4 +1,3 @@
-using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components.Animation;
