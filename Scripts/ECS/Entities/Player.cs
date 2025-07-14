@@ -1,9 +1,5 @@
-using GameRpg2D.Scripts.Core.Enums;
-using GameRpg2D.Scripts.Core.Utils;
-using GameRpg2D.Scripts.ECS.Components.Animation;
-using GameRpg2D.Scripts.ECS.Components.Combat;
-using GameRpg2D.Scripts.ECS.Components.Input;
-using GameRpg2D.Scripts.ECS.Components.Movement;
+using GameRpg2D.Scripts.ECS.Components.AI;
+using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Tags;
 using Godot;
 
@@ -19,55 +15,26 @@ public partial class Player : BaseBody
     protected override void RegisterComponents()
     {
         // Tag de jogador local
-        AddComponent(new LocalPlayerTag(_playerId));
+        AddLocalPlayerTag(_playerId);
 
-        // Componente de input
-        AddComponent(new InputComponent());        // Componente de movimento
-        var initialGridPosition = Vector2I.Zero;
-        var initialWorldPosition = PositionHelper.GridToWorld(initialGridPosition);
-
-        AddComponent(new MovementComponent
-        {
-            Speed = MoveSpeed,
-            CurrentDirection = Direction.South,
-            GridPosition = initialGridPosition,
-            TargetGridPosition = initialGridPosition,
-            WorldPosition = initialWorldPosition,
-            TargetWorldPosition = initialWorldPosition,
-            IsMoving = false,
-            MoveProgress = 0.0f
-        });
-
-        // Componente de ataque
-        AddComponent(new AttackComponent
-        {
-            AttackSpeed = AttackSpeed,
-            AttackCooldown = AttackCooldown,
-            LastAttackTime = 0.0,
-            IsAttacking = false,
-            AttackDirection = Direction.South,
-            AttackProgress = 0.0f,
-            BaseDamage = 10.0f,
-            AttackRange = 1
-        });
-
-        // Componente de animação (precisa ser adicionado após InitializeSprite)
-        CallDeferred(nameof(AddAnimationComponent));
+        // Componente de input (para capturar teclas e ações do jogador)
+        AddInputComponent();
+        
+        // Componente de navegação (para movimentação do agente)
+        AddNavigationComponent();
+        
+        base.RegisterComponents();
     }
+    
+    private void AddLocalPlayerTag(int playerId)
+        => AddComponent(new LocalPlayerTag(playerId));
+    private void AddInputComponent()
+        => AddComponent(new InputComponent());
 
-    private void AddAnimationComponent()
-    {
-        var sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-        if (sprite != null)
-        {
-            AddComponent(new AnimationComponent
-            {
-                State = AnimationState.Idle,
-                Direction = Direction.South,
-                Sprite = sprite,
-                CurrentAnimation = DefaultAnimation,
-                IsPlaying = true
-            });
-        }
-    }
+    private void AddNavigationComponent()
+        => AddComponent(new NavigationComponent(
+            NavigationAgent,
+            StartingGridPosition,
+            StartingGridPosition,
+            0));
 }

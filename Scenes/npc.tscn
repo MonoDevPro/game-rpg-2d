@@ -1,24 +1,15 @@
-[gd_scene load_steps=3 format=3 uid="uid://bohts4wuvecn7"]
+[gd_scene load_steps=5 format=3 uid="uid://bohts4wuvecn7"]
 
 [ext_resource type="Script" uid="uid://b8ggx6phj2edr" path="res://Scripts/ECS/Entities/Npc.cs" id="1_acqhf"]
+[ext_resource type="PackedScene" uid="uid://b6bwodx0xvsx0" path="res://Scenes/body.tscn" id="1_xxsvc"]
+[ext_resource type="Script" uid="uid://dh3vufk4rocwd" path="res://Scripts/Data/Behaviours/PatrolData.cs" id="3_g6unj"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_6t5aa"]
+[sub_resource type="Resource" id="Resource_g6unj"]
+script = ExtResource("3_g6unj")
 
-[node name="Npc" type="CharacterBody2D"]
+[node name="Npc" instance=ExtResource("1_xxsvc")]
 script = ExtResource("1_acqhf")
-_npcName = "Rodorfo"
-_behaviourType = 1
-_reverseOnEnd = true
-_patrolWaypoints = Array[Vector2i]([Vector2i(5, 1), Vector2i(8, 1), Vector2i(9, 1), Vector2i(10, 1)])
-
-[node name="Camera2D" type="Camera2D" parent="."]
-limit_smoothed = true
-position_smoothing_enabled = true
-rotation_smoothing_enabled = true
-
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-animation = &""
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, 22)
-shape = SubResource("RectangleShape2D_6t5aa")
+_npcId = 0
+_npcName = "TesteNpc"
+_behaviourType = 0
+_patrolData = SubResource("Resource_g6unj")

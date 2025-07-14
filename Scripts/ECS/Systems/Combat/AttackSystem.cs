@@ -1,11 +1,9 @@
 using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
-using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
-using GameRpg2D.Scripts.ECS.Components.Animation;
 using GameRpg2D.Scripts.ECS.Components.Combat;
-using GameRpg2D.Scripts.ECS.Components.Input;
+using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Components.Tags;
 using GameRpg2D.Scripts.ECS.Events;
@@ -13,42 +11,44 @@ using GameRpg2D.Scripts.ECS.Infrastructure;
 using Godot;
 
 namespace GameRpg2D.Scripts.ECS.Systems.Combat;
-
 /// <summary>
 /// Sistema responsável por processar o combate das entidades
 /// </summary>
 public partial class AttackSystem : BaseSystem<World, float>
 {
+    private double _elapsedTime = 0.0;
+
     public AttackSystem(World world) : base(world) { }
+
+    public override void BeforeUpdate(in float delta)
+    {
+        base.BeforeUpdate(in delta);
+        _elapsedTime += delta;
+    }
 
     /// <summary>
     /// Processa input de ataque para jogadores locais
     /// </summary>
-    [Query]
-    [All<AttackComponent, InputComponent, MovementComponent, LocalPlayerTag>]
-    private void ProcessAttackInput([Data] in float deltaTime, ref AttackComponent attack, in InputComponent input, in MovementComponent movement, in LocalPlayerTag playerTag)
+    [Query, All<AttackComponent, InputComponent, MovementComponent, LocalPlayerTag>]
+    private void ProcessAttackInput(ref AttackComponent attack, in InputComponent input, in MovementComponent movement)
     {
-        var currentTime = Time.GetTicksMsec() / 1000.0; // Converte para segundos
-
-        // Verifica se pode atacar (não está atacando e passou o cooldown)
+        // Verifica se pode atacar (não está em progresso e passou o cooldown)
         var canAttack = !attack.IsAttacking &&
-                       (currentTime - attack.LastAttackTime) >= attack.AttackCooldown;
+                        (_elapsedTime - attack.LastAttackTime) >= attack.AttackCooldown;
 
-        // Se recebeu input de ataque e pode atacar
-        // Suporta tanto ataque único (JustPressed) quanto contínuo (Pressed após cooldown)
+        // Suporta ataque único (JustPressed) e contínuo (Pressed após cooldown)
         var wantsToAttack = input.IsAttackJustPressed ||
-                           (input.IsAttackPressed && canAttack);
+                            (input.IsAttackPressed && canAttack);
 
         if (wantsToAttack && canAttack)
         {
-            // Inicia ataque na direção atual do movimento
-            var attackDirection = movement.CurrentDirection != Direction.None
+            // Define direção de ataque (ou movendo-se, ou padrão)
+            attack.AttackDirection = movement.CurrentDirection != Direction.None
                 ? movement.CurrentDirection
-                : Direction.South; // Direção padrão
+                : Direction.South;
 
-            attack.LastAttackTime = currentTime;
+            attack.LastAttackTime = _elapsedTime;
             attack.IsAttacking = true;
-            attack.AttackDirection = attackDirection;
             attack.AttackProgress = 0.0f;
         }
     }
@@ -56,23 +56,20 @@ public partial class AttackSystem : BaseSystem<World, float>
     /// <summary>
     /// Processa o progresso dos ataques em andamento
     /// </summary>
-    [Query]
-    [All<AttackComponent>]
+    [Query, All<AttackComponent>]
     private void ProcessAttackProgress([Data] in float deltaTime, ref AttackComponent attack, in Entity entity)
     {
         if (!attack.IsAttacking)
-            return;        // Calcula progresso do ataque
-        var progressIncrement = deltaTime / attack.AttackSpeed;
-        var newProgress = Mathf.Clamp(attack.AttackProgress + progressIncrement, 0.0f, 1.0f);
+            return;
 
-        // Atualiza progresso
+        var increment = deltaTime / attack.AttackSpeed;
+        var newProgress = Mathf.Clamp(attack.AttackProgress + increment, 0.0f, 1.0f);
+
         attack.AttackProgress = newProgress;
         attack.IsAttacking = newProgress < 1.0f;
 
-        // Se ataque foi concluído
         if (newProgress >= 1.0f)
         {
-            // Aqui seria onde processaríamos dano, hit detection, etc.
             ExecuteAttackEffect(attack, entity.Id);
         }
     }
@@ -82,7 +79,6 @@ public partial class AttackSystem : BaseSystem<World, float>
     /// </summary>
     private void ExecuteAttackEffect(in AttackComponent attack, int attackerId)
     {
-        // Publica evento de ataque
         GameEventBus.PublishEntityAttack(new EntityAttackEvent(
             attackerId: (uint)attackerId,
             attackDirection: attack.AttackDirection,
@@ -90,7 +86,6 @@ public partial class AttackSystem : BaseSystem<World, float>
             range: attack.AttackRange
         ));
 
-        // TODO: Implementar detecção de hit, aplicação de dano, etc.
-        GD.Print($"Ataque executado! Direção: {attack.AttackDirection}, Dano: {attack.BaseDamage}");
+        GD.Print($"[AttackSystem] Ataque executado! Direção: {attack.AttackDirection}, Dano: {attack.BaseDamage}");
     }
 }

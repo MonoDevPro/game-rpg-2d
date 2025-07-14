@@ -1,18 +1,13 @@
 [gd_scene load_steps=3 format=3 uid="uid://dg2wodn3kiqy7"]
 
 [ext_resource type="Script" uid="uid://bublsjrlcjxkq" path="res://Scripts/ECS/Entities/Player.cs" id="1_cvnsp"]
+[ext_resource type="PackedScene" uid="uid://b6bwodx0xvsx0" path="res://Scenes/body.tscn" id="1_v0iea"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_6t5aa"]
-
-[node name="Player" type="CharacterBody2D"]
+[node name="Player" instance=ExtResource("1_v0iea")]
 script = ExtResource("1_cvnsp")
-EnableDebugCollision = true
+_playerId = 0
 
-[node name="Camera2D" type="Camera2D" parent="."]
-
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-animation = &""
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, 22)
-shape = SubResource("RectangleShape2D_6t5aa")
+[node name="Camera2D" type="Camera2D" parent="." index="3"]
+limit_smoothed = true
+position_smoothing_enabled = true
+rotation_smoothing_enabled = true

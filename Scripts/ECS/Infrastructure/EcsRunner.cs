@@ -3,7 +3,7 @@ using Arch.System;
 using GameRpg2D.Scripts.ECS.Systems.AI;
 using GameRpg2D.Scripts.ECS.Systems.Animation;
 using GameRpg2D.Scripts.ECS.Systems.Combat;
-using GameRpg2D.Scripts.ECS.Systems.Input;
+using GameRpg2D.Scripts.ECS.Systems.Inputs;
 using GameRpg2D.Scripts.ECS.Systems.Movement;
 using GameRpg2D.Scripts.ECS.Systems.Physics;
 using Godot;

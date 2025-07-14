@@ -1,9 +1,26 @@
-[gd_scene load_steps=5 format=3 uid="uid://c8fqucywasqvs"]
+[gd_scene load_steps=8 format=3 uid="uid://c8fqucywasqvs"]
 
 [ext_resource type="Script" uid="uid://cla8u1o83uw7m" path="res://Scripts/Infrastructure/GameManager.cs" id="1_8gbba"]
 [ext_resource type="PackedScene" uid="uid://nleqnevdv17x" path="res://Scenes/map.tscn" id="1_jjvhh"]
 [ext_resource type="PackedScene" uid="uid://dg2wodn3kiqy7" path="res://Scenes/player.tscn" id="2_bo1nx"]
 [ext_resource type="PackedScene" uid="uid://bohts4wuvecn7" path="res://Scenes/npc.tscn" id="4_jjvhh"]
+[ext_resource type="Script" uid="uid://dh3vufk4rocwd" path="res://Scripts/Data/Behaviours/PatrolData.cs" id="5_kry3j"]
+
+[sub_resource type="Resource" id="Resource_kry3j"]
+resource_local_to_scene = true
+script = ExtResource("5_kry3j")
+StartGridPosition = Vector2i(10, 0)
+PatrolSpeed = 100.0
+WaitDuration = 1.0
+IsLooping = false
+ReverseOnEnd = true
+WayPointTolerance = 0.0
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_21xkr"]
+sample_partition_type = 1
+parsed_geometry_type = 1
+source_geometry_mode = 1
+cell_size = 32.0
 
 [node name="Main" type="Node2D"]
 
@@ -15,4 +32,7 @@ script = ExtResource("1_8gbba")
 [node name="Player" parent="." instance=ExtResource("2_bo1nx")]
 
 [node name="Npc" parent="." instance=ExtResource("4_jjvhh")]
-_waitDuration = 0.5
+_patrolData = SubResource("Resource_kry3j")
+
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
+navigation_polygon = SubResource("NavigationPolygon_21xkr")

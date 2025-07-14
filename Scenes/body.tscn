@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3 uid="uid://b6bwodx0xvsx0"]
+
+[ext_resource type="Script" uid="uid://cxxlqpxds3rem" path="res://Scripts/ECS/Entities/BaseBody.cs" id="1_7h43o"]
+[ext_resource type="SpriteFrames" uid="uid://tkqyq6a8rx3c" path="res://Resources/Sprites/Mage/Male/spriteframes.tres" id="1_35550"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7h43o"]
+
+[node name="Body" type="CharacterBody2D"]
+script = ExtResource("1_7h43o")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_35550")
+animation = &"idle_south"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 22)
+shape = SubResource("RectangleShape2D_7h43o")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_metadata_flags = 0
+simplify_path = true

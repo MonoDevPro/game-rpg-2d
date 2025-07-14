@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
@@ -24,18 +25,18 @@ public partial class AnimationSystem : BaseSystem<World, float>
     /// </summary>
     [Query]
     [All<AnimationComponent, MovementComponent>]
-    private void ProcessMovementAnimation(Entity entity, [Data] in float deltaTime, ref AnimationComponent animation, in MovementComponent movement)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ProcessMovementAnimation([Data] in float deltaTime, Entity entity, ref AnimationComponent animation, in MovementComponent movement)
     {
         // IMPORTANTE: Só processa movimento se NÃO estiver atacando
         // Verifica se a entidade tem componente de ataque
         if (World.Has<AttackComponent>(entity))
         {
             ref var attack = ref World.Get<AttackComponent>(entity);
+            
             // Se está atacando, não processa animação de movimento
             if (attack.IsAttacking)
-            {
                 return;
-            }
         }
 
         // Determina o estado da animação baseado no movimento
@@ -73,6 +74,7 @@ public partial class AnimationSystem : BaseSystem<World, float>
     /// </summary>
     [Query]
     [All<AnimationComponent, AttackComponent>]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ProcessAttackAnimation(Entity entity, [Data] in float deltaTime, ref AnimationComponent animation, in AttackComponent attack)
     {
         // Se está atacando, prioriza animação de ataque

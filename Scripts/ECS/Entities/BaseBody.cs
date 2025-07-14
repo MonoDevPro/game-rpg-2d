@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using Arch.Core;
 using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
+using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components;
+using GameRpg2D.Scripts.ECS.Components.Animation;
+using GameRpg2D.Scripts.ECS.Components.Combat;
+using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.Infrastructure;
 using Godot;
@@ -14,16 +19,18 @@ namespace GameRpg2D.Scripts.ECS.Entities;
 /// estendendo CharacterBody2D para aproveitar física e movimento nativo do Godot.
 /// Obtém o World via nó autoload configurado no Godot (Project Settings > Autoload).
 /// </summary>
-public abstract partial class BaseBody : CharacterBody2D
+public partial class BaseBody : CharacterBody2D
 {
     // Resources
     private AnimatedSprite2D _sprite;
+    protected NavigationAgent2D NavigationAgent;
 
     #region Parameters
     /// <summary>
     /// Caminho para o nó EcsRunner registrado como singleton/autoload
     /// </summary>
     // ReSharper disable once InconsistentNaming
+    [Export] protected Vector2I StartingGridPosition = Vector2I.Zero; // Posição inicial no grid
     [Export] protected StringName DefaultAnimation = "idle_south";
     [Export] protected Vocation Vocation = Vocation.Mage;
     [Export] protected Gender Gender = Gender.Male;
@@ -52,6 +59,8 @@ public abstract partial class BaseBody : CharacterBody2D
     public override void _Ready()
     {
         base._Ready();
+        
+        NavigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
 
         // Busca o nó EcsRunner no autoload do ECS
         var ecsNode = GameManager.Instance?.EcsRunner;
@@ -71,12 +80,50 @@ public abstract partial class BaseBody : CharacterBody2D
             GD.Print($"[ECS] Entidade {Entity.Id} criada com sucesso.");
 
         RegisterComponents();
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        base._PhysicsProcess(delta);
+    }
+
+    public List<Vector2I> GetPathTo(Vector2I targetGridPosition)
+    {
+        if (NavigationAgent == null)
+        {
+            GD.PrintErr("NavigationAgent2D não encontrado.");
+            return [];
+        }
+
+        // Calcula o caminho usando o NavigationAgent2D
+        var paths = NavigationAgent.GetCurrentNavigationPath();
+        
+        // Converte o caminho de Vector2 para Vector2I (grid)
+        var gridPath = new List<Vector2I>();
+        foreach (var point in paths)
+        {
+            gridPath.Add(PositionHelper.WorldToGrid(point));
+        }
+
+        return gridPath;
+    }
+    
+    /// <summary>
+    /// Subclasses devem implementar para registrar seus próprios components
+    /// </summary>
+    protected virtual void RegisterComponents()
+    {
+        // Adiciona componente de movimento com posição inicial
+        AddMovementComponent(StartingGridPosition);
+        
+        // Adiciona componente de ataque
+        AddAttackComponent();
 
         // Adiciona componente de colisão automaticamente
         AddCollisionComponent();
 
-        // Inicializa o sprite e animações
-        InitializeSprite();
+        // Adiciona componente de animação
+        AddAnimationComponent();
     }
 
     /// <summary>
@@ -138,11 +185,6 @@ public abstract partial class BaseBody : CharacterBody2D
     }
 
     /// <summary>
-    /// Subclasses devem implementar para registrar seus próprios components
-    /// </summary>
-    protected abstract void RegisterComponents();
-
-    /// <summary>
     /// Método chamado quando a entidade é removida do ECS
     /// </summary>
     public override void _ExitTree()
@@ -181,7 +223,24 @@ public abstract partial class BaseBody : CharacterBody2D
         // Não reproduz animação aqui - deixa para o AnimationSystem fazer
         // O AnimationSystem vai definir a animação correta baseado no estado inicial
     }
-
+    
+    private void AddAnimationComponent()
+    {
+        InitializeSprite();
+        
+        if (_sprite != null)
+        {
+            AddComponent(new AnimationComponent
+            {
+                State = AnimationState.Idle,
+                Direction = Direction.South,
+                Sprite = _sprite,
+                CurrentAnimation = DefaultAnimation,
+                IsPlaying = true
+            });
+        }
+    }
+    
     /// <summary>
     /// Adiciona componente de colisão automaticamente
     /// </summary>
@@ -201,5 +260,39 @@ public abstract partial class BaseBody : CharacterBody2D
         };
 
         AddComponent(collisionComponent);
+    }
+    
+    private void AddMovementComponent(Vector2I initialGridPosition)
+    {
+        var initialWorldPosition = PositionHelper.GridToWorld(initialGridPosition);
+        
+        AddComponent(new MovementComponent
+        {
+            Speed = MoveSpeed,
+            CurrentDirection = Direction.South,
+            GridPosition = initialGridPosition,
+            TargetGridPosition = initialGridPosition,
+            WorldPosition = initialWorldPosition,
+            TargetWorldPosition = initialWorldPosition,
+            StartWorldPosition = initialWorldPosition,
+            IsMoving = false,
+            MoveProgress = 0.0f
+        });
+    }
+    
+    private void AddAttackComponent()
+    {
+        // Componente de ataque
+        AddComponent(new AttackComponent
+        {
+            AttackSpeed = AttackSpeed,
+            AttackCooldown = AttackCooldown,
+            LastAttackTime = 0.0,
+            IsAttacking = false,
+            AttackDirection = Direction.South,
+            AttackProgress = 0.0f,
+            BaseDamage = 10.0f,
+            AttackRange = 1
+        });
     }
 }

@@ -174,7 +174,7 @@ public partial class PatrolSystem : BaseSystem<World, float>
         // Muda para estado de espera
         ChangePatrolState(ref patrol, PatrolState.Waiting, npcTag);
     }
-    
+
     /// <summary>
     /// Move NPC para um waypoint específico
     /// </summary>
@@ -185,10 +185,10 @@ public partial class PatrolSystem : BaseSystem<World, float>
         {
             // Configura movimento direto para o waypoint
             var targetWorldPosition = PositionHelper.GridToWorld(targetWayPoint);
-            
+
             // Calcula direção para animação (baseada na direção predominante)
             var direction = CalculateDirectionToWayPoint(movement.GridPosition, targetWayPoint);
-            
+
             movement.CurrentDirection = direction;
             movement.TargetGridPosition = targetWayPoint;
             movement.TargetWorldPosition = targetWorldPosition;
@@ -199,7 +199,7 @@ public partial class PatrolSystem : BaseSystem<World, float>
 
             // Atualiza direção da patrulha
             patrol.PatrolDirection = direction;
-            
+
             GD.Print($"[PatrolSystem] NPC movendo de {movement.GridPosition} para {targetWayPoint}");
         }
     }
