@@ -1,5 +1,4 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Arch.System;
 using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Core.Enums;
@@ -64,30 +63,30 @@ public partial class AttackSystem(World world) : BaseSystem<World, float>(world)
     private void ProcessAttackProgress(
         in AttackComponent ac,
         ref AttackStateComponent st,
-        ref AttackInputComponent ai)
+        ref AttackInputComponent ai,
+        in FacingComponent fc)
     {
         if (!st.IsActive)
             return;
         
         var timeSinceStart = _elapsedTime - st.StartTime;
-        st.StartTime += _elapsedTime - st.StartTime; // atualiza o tempo de início com o delta
-
-        // Avança o progresso com base no delta
-        st.Progress += timeSinceStart / ac.AttackSpeed;
+        
+        // Calcula o progresso com base no tempo decorrido
+        st.Progress = timeSinceStart / ac.AttackSpeed;
         
         if (st.Progress < 1f)
             return;
 
         // Fim do ataque
         GameEventBus.PublishEntityAttack(new EntityAttackEvent(
-            attackerId:   0,
-            attackDirection: Direction.None,
+            attackerId:   0, // TODO: Implementar ID da entidade
+            attackDirection: fc.CurrentDirection,
             damage:       ac.BaseDamage,
             range:        ac.GridAttackRange
         ));
 
         GD.Print($"[AttackSystem] Ataque concluído! Dano: {ac.BaseDamage}");
-            
+        
         // Começa o cooldown AQUI
         ai.LastAttackTime = _elapsedTime;
         st.IsActive = false; // desativa o estado de ataque

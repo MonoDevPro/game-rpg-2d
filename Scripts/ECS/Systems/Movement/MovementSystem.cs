@@ -2,6 +2,7 @@ using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Core.Utils;
+using GameRpg2D.Scripts.ECS.Components.Combat;
 using GameRpg2D.Scripts.ECS.Components.Facing;
 using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Movement;
@@ -18,13 +19,22 @@ namespace GameRpg2D.Scripts.ECS.Systems.Movement
     public partial class MovementSystem(World world) : BaseSystem<World, float>(world)
     {
         // 1) Mapeia input (local, remote ou IA) para o tween
-        [Query, All<MovementComponent, MovementInputComponent, GridPositionComponent>]
+        // Mapeia input para movimento, bloqueando durante ataque
+        [Query, All<MovementComponent, MovementInputComponent, GridPositionComponent, AttackStateComponent>]
         private void ApplyMovementInput(
             ref MovementComponent mv,
             in MovementInputComponent input,
             in FacingComponent facing,
-            ref GridPositionComponent grid)
+            ref GridPositionComponent grid,
+            in AttackStateComponent attackState)
         {
+            // Bloqueia movimento durante ataque
+            if (attackState.IsActive)
+            {
+                mv.HasContinuousInput = false;
+                return;
+            }
+            
             // Inicia movimentação se houver input e não estiver se movendo
             mv.HasContinuousInput = input.IsMoving;
 
