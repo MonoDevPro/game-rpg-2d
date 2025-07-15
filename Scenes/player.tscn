@@ -7,6 +7,10 @@
 script = ExtResource("1_cvnsp")
 _playerId = 0
 
+[node name="NavigationAgent2D" parent="." index="2"]
+path_metadata_flags = 7
+simplify_path = false
+
 [node name="Camera2D" type="Camera2D" parent="." index="3"]
 limit_smoothed = true
 position_smoothing_enabled = true

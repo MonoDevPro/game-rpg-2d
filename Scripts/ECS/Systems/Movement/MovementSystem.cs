@@ -4,6 +4,7 @@ using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components;
+using GameRpg2D.Scripts.ECS.Components.AI;
 using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Components.Tags;
@@ -21,11 +22,12 @@ namespace GameRpg2D.Scripts.ECS.Systems.Movement
         public MovementSystem(World world) : base(world) { }
 
         /// <summary>
-        /// Processa input de movimento para jogadores locais
+        /// Processa input de movimento para jogadores locais (movimento direto por teclado)
         /// </summary>
         [Query, All<MovementComponent, InputComponent, LocalPlayerTag>]
         private void ProcessInput([Data] in float deltaTime, ref MovementComponent movement, in InputComponent input)
         {
+            // Teclado tem prioridade sobre navegação
             movement.HasContinuousInput = input.IsMovementPressed && input.MovementDirection != Direction.None;
 
             if (!movement.IsMoving && movement.HasContinuousInput)
@@ -37,6 +39,7 @@ namespace GameRpg2D.Scripts.ECS.Systems.Movement
                 movement.StartWorldPosition = movement.WorldPosition;
                 movement.IsMoving = true;
                 movement.MoveProgress = 0.0f;
+                movement.IsNavigationMovement = false; // Marca como movimento de teclado
             }
             else if (movement.IsMoving && movement.HasContinuousInput && input.MovementDirection != movement.CurrentDirection)
             {

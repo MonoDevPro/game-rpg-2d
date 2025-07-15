@@ -59,7 +59,7 @@ public partial class BaseBody : CharacterBody2D
     public override void _Ready()
     {
         base._Ready();
-        
+
         NavigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
 
         // Busca o nó EcsRunner no autoload do ECS
@@ -97,7 +97,7 @@ public partial class BaseBody : CharacterBody2D
 
         // Calcula o caminho usando o NavigationAgent2D
         var paths = NavigationAgent.GetCurrentNavigationPath();
-        
+
         // Converte o caminho de Vector2 para Vector2I (grid)
         var gridPath = new List<Vector2I>();
         foreach (var point in paths)
@@ -107,7 +107,7 @@ public partial class BaseBody : CharacterBody2D
 
         return gridPath;
     }
-    
+
     /// <summary>
     /// Subclasses devem implementar para registrar seus próprios components
     /// </summary>
@@ -115,7 +115,7 @@ public partial class BaseBody : CharacterBody2D
     {
         // Adiciona componente de movimento com posição inicial
         AddMovementComponent(StartingGridPosition);
-        
+
         // Adiciona componente de ataque
         AddAttackComponent();
 
@@ -223,11 +223,11 @@ public partial class BaseBody : CharacterBody2D
         // Não reproduz animação aqui - deixa para o AnimationSystem fazer
         // O AnimationSystem vai definir a animação correta baseado no estado inicial
     }
-    
+
     private void AddAnimationComponent()
     {
         InitializeSprite();
-        
+
         if (_sprite != null)
         {
             AddComponent(new AnimationComponent
@@ -240,7 +240,7 @@ public partial class BaseBody : CharacterBody2D
             });
         }
     }
-    
+
     /// <summary>
     /// Adiciona componente de colisão automaticamente
     /// </summary>
@@ -261,11 +261,11 @@ public partial class BaseBody : CharacterBody2D
 
         AddComponent(collisionComponent);
     }
-    
+
     private void AddMovementComponent(Vector2I initialGridPosition)
     {
         var initialWorldPosition = PositionHelper.GridToWorld(initialGridPosition);
-        
+
         AddComponent(new MovementComponent
         {
             Speed = MoveSpeed,
@@ -276,10 +276,11 @@ public partial class BaseBody : CharacterBody2D
             TargetWorldPosition = initialWorldPosition,
             StartWorldPosition = initialWorldPosition,
             IsMoving = false,
-            MoveProgress = 0.0f
+            MoveProgress = 0.0f,
+            IsNavigationMovement = false
         });
     }
-    
+
     private void AddAttackComponent()
     {
         // Componente de ataque

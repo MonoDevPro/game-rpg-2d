@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://c8fqucywasqvs"]
+[gd_scene load_steps=7 format=3 uid="uid://c8fqucywasqvs"]
 
 [ext_resource type="Script" uid="uid://cla8u1o83uw7m" path="res://Scripts/Infrastructure/GameManager.cs" id="1_8gbba"]
 [ext_resource type="PackedScene" uid="uid://nleqnevdv17x" path="res://Scenes/map.tscn" id="1_jjvhh"]
@@ -16,12 +16,6 @@ IsLooping = false
 ReverseOnEnd = true
 WayPointTolerance = 0.0
 
-[sub_resource type="NavigationPolygon" id="NavigationPolygon_21xkr"]
-sample_partition_type = 1
-parsed_geometry_type = 1
-source_geometry_mode = 1
-cell_size = 32.0
-
 [node name="Main" type="Node2D"]
 
 [node name="GameManager" type="Node" parent="."]
@@ -33,6 +27,3 @@ script = ExtResource("1_8gbba")
 
 [node name="Npc" parent="." instance=ExtResource("4_jjvhh")]
 _patrolData = SubResource("Resource_kry3j")
-
-[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
-navigation_polygon = SubResource("NavigationPolygon_21xkr")

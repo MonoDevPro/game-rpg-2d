@@ -28,12 +28,14 @@ public sealed class EcsRunner
         _deltaGroup = new Group<float>(
             "ECS Systems",
             // Ordem de execução dos sistemas
-            new InputSystem(World),      // 1. Processa input
-            new PatrolSystem(World),     // 2. Processa patrulha dos NPCs
-            new CollisionSystem(World),  // 3. Valida colisões
-            new MovementSystem(World),   // 4. Processa movimento
-            new AttackSystem(World),     // 5. Processa ataque
-            new AnimationSystem(World)   // 6. Atualiza animações
+            new InputSystem(World),                // 1. Processa input
+            new PlayerNavigationSystem(World),     // 2. Conecta input com navegação (jogadores)
+            new PatrolSystem(World),               // 4. Processa patrulha dos NPCs
+            new CollisionSystem(World),            // 5. Valida colisões
+            new MovementSystem(World),             // 6. Processa movimento
+            new NavigationSystem(World),           // 3. Calcula caminhos de navegação
+            new AttackSystem(World),               // 7. Processa ataque
+            new AnimationSystem(World)             // 8. Atualiza animações
         );
 
         _deltaGroup.Initialize();

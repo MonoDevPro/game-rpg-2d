@@ -71,4 +71,9 @@ public struct MovementComponent : IComponent
     /// Indica se há input contínuo de movimento
     /// </summary>
     public bool HasContinuousInput;
+
+    /// <summary>
+    /// Indica se o movimento atual é por navegação (clique) ou direto (teclado)
+    /// </summary>
+    public bool IsNavigationMovement;
 }

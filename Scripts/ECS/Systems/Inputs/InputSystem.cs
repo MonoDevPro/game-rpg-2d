@@ -14,12 +14,12 @@ namespace GameRpg2D.Scripts.ECS.Systems.Inputs;
 public partial class InputSystem(World world) : BaseSystem<World, float>(world)
 {
     private readonly StringName _attackAction = "attack";
-    private readonly StringName _clickAction  = "click";
-    private readonly StringName _moveN       = "move_north";
-    private readonly StringName _moveS       = "move_south";
-    private readonly StringName _moveW       = "move_west";
-    private readonly StringName _moveE       = "move_east";
-    
+    private readonly StringName _clickAction = "click";
+    private readonly StringName _moveN = "move_north";
+    private readonly StringName _moveS = "move_south";
+    private readonly StringName _moveW = "move_west";
+    private readonly StringName _moveE = "move_east";
+
     private double _elapsedTime = 0.0;
 
     public override void BeforeUpdate(in float delta)
@@ -39,28 +39,22 @@ public partial class InputSystem(World world) : BaseSystem<World, float>(world)
         if (Input.IsActionPressed(_moveS)) rawInput.Y += 1;
         if (Input.IsActionPressed(_moveW)) rawInput.X -= 1;
         if (Input.IsActionPressed(_moveE)) rawInput.X += 1;
-        
-        var direction           = GetDirectionFromInput(rawInput);
-        var isMovementPressed   = rawInput.LengthSquared() > 0;
+
+        var direction = GetDirectionFromInput(rawInput);
+        var isMovementPressed = rawInput.LengthSquared() > 0;
         var isMovementJustPressed = isMovementPressed && !input.IsMovementPressed;
-        
+
         // 2) Ataque
-        var isAttackPressed     = Input.IsActionPressed(_attackAction);
+        var isAttackPressed = Input.IsActionPressed(_attackAction);
         var isAttackJustPressed = Input.IsActionJustPressed(_attackAction);
 
-        // 3) Clique do mouse cancela movimento
+        // 3) Clique do mouse (para navegação)
         var isClickJustPressed = Input.IsActionJustPressed(_clickAction);
-        if (isClickJustPressed)
-        {
-            direction             = Direction.None;
-            isMovementPressed     = false;
-            isMovementJustPressed = false;
-        }
-        
+
         // 4) Timestamps usando acumulador
-        var lastMovementTime = isMovementPressed   ? _elapsedTime : input.LastMovementTime;
-        var lastAttackTime   = isAttackJustPressed ? _elapsedTime : input.LastAttackTime;
-    
+        var lastMovementTime = isMovementPressed ? _elapsedTime : input.LastMovementTime;
+        var lastAttackTime = isAttackJustPressed ? _elapsedTime : input.LastAttackTime;
+
         // 5) Atualiza componente
         input.MovementDirection = direction;
         input.IsMovementPressed = isMovementPressed;

@@ -19,13 +19,13 @@ public partial class Player : BaseBody
 
         // Componente de input (para capturar teclas e ações do jogador)
         AddInputComponent();
-        
+
         // Componente de navegação (para movimentação do agente)
         AddNavigationComponent();
-        
+
         base.RegisterComponents();
     }
-    
+
     private void AddLocalPlayerTag(int playerId)
         => AddComponent(new LocalPlayerTag(playerId));
     private void AddInputComponent()
@@ -36,5 +36,6 @@ public partial class Player : BaseBody
             NavigationAgent,
             StartingGridPosition,
             StartingGridPosition,
-            0));
+            reachGridTolerance: 1,
+            repathInterval: 1));
 }
