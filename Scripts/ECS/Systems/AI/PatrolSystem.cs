@@ -1,3 +1,4 @@
+/*
 using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
@@ -328,3 +329,4 @@ public partial class PatrolSystem : BaseSystem<World, float>
         ));
     }
 }
+*/

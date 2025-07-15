@@ -7,6 +7,8 @@ using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components;
 using GameRpg2D.Scripts.ECS.Components.Animation;
 using GameRpg2D.Scripts.ECS.Components.Combat;
+using GameRpg2D.Scripts.ECS.Components.Facing;
+using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.Infrastructure;
@@ -22,7 +24,7 @@ namespace GameRpg2D.Scripts.ECS.Entities;
 public partial class BaseBody : CharacterBody2D
 {
     // Resources
-    private AnimatedSprite2D _sprite;
+    protected AnimatedSprite2D _sprite;
     protected NavigationAgent2D NavigationAgent;
 
     #region Parameters
@@ -59,7 +61,7 @@ public partial class BaseBody : CharacterBody2D
     public override void _Ready()
     {
         base._Ready();
-
+        
         NavigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
 
         // Busca o nó EcsRunner no autoload do ECS
@@ -68,7 +70,7 @@ public partial class BaseBody : CharacterBody2D
             throw new InvalidOperationException("O EcsRunner ou não foi adicionado.");
 
         World = ecsNode.World;
-
+        
         // Cria a entidade e adiciona componentes padrão
         Entity = World.Create(
             new NodeComponent(this)
@@ -264,21 +266,18 @@ public partial class BaseBody : CharacterBody2D
 
     private void AddMovementComponent(Vector2I initialGridPosition)
     {
-        var initialWorldPosition = PositionHelper.GridToWorld(initialGridPosition);
-
+        var worldPosition = PositionHelper.GridToWorld(initialGridPosition);
+        AddComponent(new TransformComponent(worldPosition, Scale, Rotation));
+        AddComponent(new GridPositionComponent(initialGridPosition));
+        AddComponent(new FacingComponent(Direction.South));
+        
         AddComponent(new MovementComponent
         {
             Speed = MoveSpeed,
-            CurrentDirection = Direction.South,
-            GridPosition = initialGridPosition,
-            TargetGridPosition = initialGridPosition,
-            WorldPosition = initialWorldPosition,
-            TargetWorldPosition = initialWorldPosition,
-            StartWorldPosition = initialWorldPosition,
-            IsMoving = false,
-            MoveProgress = 0.0f,
-            IsNavigationMovement = false
+            FromGridPosition = initialGridPosition,
+            ToGridPosition = initialGridPosition,
         });
+        AddComponent(new MovementInputComponent());
     }
 
     private void AddAttackComponent()
@@ -288,12 +287,11 @@ public partial class BaseBody : CharacterBody2D
         {
             AttackSpeed = AttackSpeed,
             AttackCooldown = AttackCooldown,
-            LastAttackTime = 0.0,
-            IsAttacking = false,
-            AttackDirection = Direction.South,
-            AttackProgress = 0.0f,
             BaseDamage = 10.0f,
-            AttackRange = 1
+            GridAttackRange = 1
         });
+
+        AddComponent(new AttackStateComponent());
+        AddComponent(new AttackInputComponent());
     }
 }

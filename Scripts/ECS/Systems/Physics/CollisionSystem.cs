@@ -3,8 +3,8 @@ using Arch.System;
 using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.Core.Utils;
-using GameRpg2D.Scripts.ECS.Components;
-using GameRpg2D.Scripts.ECS.Components.Movement;
+using GameRpg2D.Scripts.ECS.Components.Facing;
+using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.ECS.Events;
 using GameRpg2D.Scripts.ECS.Infrastructure;
@@ -15,149 +15,103 @@ namespace GameRpg2D.Scripts.ECS.Systems.Physics;
 /// <summary>
 /// Sistema responsável por gerenciar colisões no ambiente grid-based
 /// </summary>
-public partial class CollisionSystem : BaseSystem<World, float>
+public partial class CollisionSystem(World world) : BaseSystem<World, float>(world)
 {
-    public CollisionSystem(World world) : base(world) { }
-
     /// <summary>
     /// Atualiza informações de colisão para todas as entidades
     /// </summary>
-    [Query]
-    [All<CollisionComponent, MovementComponent, NodeComponent>]
-    private void UpdateCollisionData([Data] in float deltaTime, ref CollisionComponent collision, in MovementComponent movement, in NodeComponent node)
+    [Query, All<CollisionComponent, TransformComponent>]
+    private void UpdateCollisionData(
+        ref CollisionComponent collision,
+        in TransformComponent transform)
     {
         if (collision.Body == null)
             return;
 
-        // Atualiza direções bloqueadas
+        var gridPos = PositionHelper.WorldToGrid(transform.WorldPosition);
+
         collision.BlockedDirections = CollisionHelper.GetBlockedDirections(
-            movement.GridPosition,
+            gridPos,
             collision.Body,
-            collision.Body // Exclui a própria entidade
+            collision.Body // exclui si mesmo
         );
 
-        // Atualiza flag de colisão
         collision.IsColliding = collision.BlockedDirections != CollisionDirections.None;
 
-        // Atualiza última posição válida se não está colidindo
         if (!collision.IsColliding)
-        {
-            collision.LastValidPosition = movement.WorldPosition;
-        }
+            collision.LastValidPosition = transform.WorldPosition;
     }
 
     /// <summary>
-    /// Valida movimento antes de ser executado
+    /// Antes de mover, valida se a direção pedida pelo input está bloqueada
     /// </summary>
-    [Query]
-    [All<CollisionComponent, MovementComponent>]
-    private void ValidateMovement([Data] in float deltaTime, in CollisionComponent collision, ref MovementComponent movement)
+    [Query, All<CollisionComponent, MovementInputComponent, GridPositionComponent>]
+    private void ValidateMovement(
+        in CollisionComponent cs,
+        ref MovementInputComponent mi,
+        ref FacingComponent facing,
+        in GridPositionComponent grid)
     {
-        // Só valida se está tentando se mover
-        if (!movement.IsMoving)
+        if (!mi.IsMoving)
             return;
 
-        // Verifica se a direção atual está bloqueada
-        var isDirectionBlocked = CollisionHelper.IsDirectionBlocked(
-            collision.BlockedDirections,
-            movement.CurrentDirection
+        var originalDir = facing.CurrentDirection;
+
+        var isBlocked = CollisionHelper.IsDirectionBlocked(
+            cs.BlockedDirections,
+            originalDir
         );
 
-        if (isDirectionBlocked)
+        if (!isBlocked)
+            return;
+
+        // tenta correção
+        var alt = CollisionHelper.FindAlternativeDirection(
+            originalDir,
+            cs.BlockedDirections
+        );
+
+        if (alt != Direction.None)
         {
-            // Movimento bloqueado - tenta encontrar alternativa
-            var alternativeDirection = CollisionHelper.FindAlternativeDirection(
-                movement.CurrentDirection,
-                collision.BlockedDirections
-            );
+            // publica evento com valores originais antes de sobrescrever
+            GameEventBus.PublishMovementCorrected(new MovementCorrectedEvent(
+                entityId: (uint)cs.Body.GetInstanceId(),
+                originalDirection: originalDir,
+                correctedDirection: alt,
+                gridPosition: grid.GridPosition
+            ));
 
-            if (alternativeDirection != Direction.None)
-            {
-                // Aplica movimento alternativo
-                var newTargetGridPosition = movement.GridPosition + PositionHelper.DirectionToVector(alternativeDirection);
-
-                movement.CurrentDirection = alternativeDirection;
-                movement.TargetGridPosition = newTargetGridPosition;
-                movement.TargetWorldPosition = PositionHelper.GridToWorld(newTargetGridPosition);
-
-                // Publica evento de correção de movimento
-                GameEventBus.PublishMovementCorrected(new MovementCorrectedEvent(
-                    entityId: (uint)collision.Body.GetInstanceId(),
-                    originalDirection: movement.CurrentDirection,
-                    correctedDirection: alternativeDirection,
-                    gridPosition: movement.GridPosition
-                ));
-            }
-            else
-            {
-                // Nenhuma alternativa disponível - para o movimento
-                movement.IsMoving = false;
-                movement.MoveProgress = 0.0f;
-                movement.PendingDirection = Direction.None;
-
-                // Publica evento de movimento bloqueado
-                GameEventBus.PublishMovementBlocked(new MovementBlockedEvent(
-                    entityId: (uint)collision.Body.GetInstanceId(),
-                    blockedDirection: movement.CurrentDirection,
-                    gridPosition: movement.GridPosition
-                ));
-            }
+            facing.CurrentDirection    = alt;
+            mi.RawMovement          = PositionHelper.DirectionToVector(alt);
+            mi.JustStarted             = true;
         }
         else
         {
-            // Movimento válido - verifica se destino final está livre
-            var canMoveToTarget = CollisionHelper.CanMoveInDirection(
-                movement.GridPosition,
-                movement.CurrentDirection,
-                collision.Body,
-                collision.Body
-            );
+            // sem alternativa: bloqueia de vez
+            GameEventBus.PublishMovementBlocked(new MovementBlockedEvent(
+                entityId: (uint)cs.Body.GetInstanceId(),
+                blockedDirection: originalDir,
+                gridPosition: grid.GridPosition
+            ));
 
-            if (!canMoveToTarget)
-            {
-                // Destino bloqueado após iniciar movimento - para
-                movement.IsMoving = false;
-                movement.MoveProgress = 0.0f;
-                movement.WorldPosition = collision.LastValidPosition;
-
-                // Publica evento de colisão durante movimento
-                GameEventBus.PublishCollisionDetected(new CollisionDetectedEvent(
-                    entityId: (uint)collision.Body.GetInstanceId(),
-                    collisionPosition: movement.TargetWorldPosition,
-                    movementDirection: movement.CurrentDirection
-                ));
-            }
+            mi.IsMoving          = false;
+            mi.JustStarted       = false;
+            mi.RawMovement       = Vector2I.Zero;
         }
     }
 
     /// <summary>
-    /// Atualiza posição física da entidade baseada no movimento ECS
+    /// Debug console para colisões
     /// </summary>
-    [Query]
-    [All<CollisionComponent, MovementComponent>]
-    private void SynchronizePhysicsPosition([Data] in float deltaTime, in CollisionComponent collision, in MovementComponent movement)
+    [Query, All<CollisionComponent, GridPositionComponent>]
+    private void DebugCollisionVisualization(
+        [Data] in float deltaTime,
+        in CollisionComponent collision,
+        in GridPositionComponent grid)
     {
-        if (collision.Body == null)
+        if (!collision.EnableDebugVisualization || !collision.IsColliding)
             return;
 
-        // Sincroniza posição do CharacterBody2D com o componente de movimento
-        collision.Body.GlobalPosition = movement.WorldPosition;
-    }
-
-    /// <summary>
-    /// Sistema de debug visual para colisões
-    /// </summary>
-    [Query]
-    [All<CollisionComponent, MovementComponent>]
-    private void DebugCollisionVisualization([Data] in float deltaTime, in CollisionComponent collision, in MovementComponent movement)
-    {
-        if (!collision.EnableDebugVisualization)
-            return;
-
-        // Debug info no console
-        if (collision.IsColliding)
-        {
-            GD.Print($"[CollisionSystem] Entity at {movement.GridPosition} - Blocked directions: {collision.BlockedDirections}");
-        }
+        GD.Print($"[CollisionSystem] Entidade em {grid.GridPosition} bloqueada: {collision.BlockedDirections}");
     }
 }

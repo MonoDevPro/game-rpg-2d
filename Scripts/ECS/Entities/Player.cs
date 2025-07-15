@@ -29,7 +29,9 @@ public partial class Player : BaseBody
     private void AddLocalPlayerTag(int playerId)
         => AddComponent(new LocalPlayerTag(playerId));
     private void AddInputComponent()
-        => AddComponent(new InputComponent());
+    {
+        AddComponent(new PointerInputComponent());
+    }
 
     private void AddNavigationComponent()
         => AddComponent(new NavigationComponent(

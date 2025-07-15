@@ -1,13 +1,11 @@
 using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
-using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.Core.Utils;
-using GameRpg2D.Scripts.ECS.Components;
-using GameRpg2D.Scripts.ECS.Components.AI;
+using GameRpg2D.Scripts.ECS.Components.Facing;
 using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Movement;
-using GameRpg2D.Scripts.ECS.Components.Tags;
+using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.ECS.Events;
 using GameRpg2D.Scripts.ECS.Infrastructure;
 using Godot;
@@ -17,88 +15,81 @@ namespace GameRpg2D.Scripts.ECS.Systems.Movement
     /// <summary>
     /// Sistema responsável por processar o movimento de todas as entidades
     /// </summary>
-    public partial class MovementSystem : BaseSystem<World, float>
+    public partial class MovementSystem(World world) : BaseSystem<World, float>(world)
     {
-        public MovementSystem(World world) : base(world) { }
-
-        /// <summary>
-        /// Processa input de movimento para jogadores locais (movimento direto por teclado)
-        /// </summary>
-        [Query, All<MovementComponent, InputComponent, LocalPlayerTag>]
-        private void ProcessInput([Data] in float deltaTime, ref MovementComponent movement, in InputComponent input)
+        // 1) Mapeia input (local, remote ou IA) para o tween
+        [Query, All<MovementComponent, MovementInputComponent, GridPositionComponent>]
+        private void ApplyMovementInput(
+            ref MovementComponent mv,
+            in MovementInputComponent input,
+            in FacingComponent facing,
+            ref GridPositionComponent grid)
         {
-            // Teclado tem prioridade sobre navegação
-            movement.HasContinuousInput = input.IsMovementPressed && input.MovementDirection != Direction.None;
+            // Inicia movimentação se houver input e não estiver se movendo
+            mv.HasContinuousInput = input.IsMoving;
 
-            if (!movement.IsMoving && movement.HasContinuousInput)
+            if (!mv.IsMoving && input.IsMoving)
             {
-                var newTargetGrid = movement.GridPosition + PositionHelper.DirectionToVector(input.MovementDirection);
-                movement.CurrentDirection = input.MovementDirection;
-                movement.TargetGridPosition = newTargetGrid;
-                movement.TargetWorldPosition = PositionHelper.GridToWorld(newTargetGrid);
-                movement.StartWorldPosition = movement.WorldPosition;
-                movement.IsMoving = true;
-                movement.MoveProgress = 0.0f;
-                movement.IsNavigationMovement = false; // Marca como movimento de teclado
-            }
-            else if (movement.IsMoving && movement.HasContinuousInput && input.MovementDirection != movement.CurrentDirection)
-            {
-                movement.PendingDirection = input.MovementDirection;
-            }
-            else if (!movement.HasContinuousInput)
-            {
-                movement.PendingDirection = Direction.None;
+                var offset  = PositionHelper.DirectionToVector(facing.CurrentDirection);
+                mv.FromGridPosition = grid.GridPosition;
+                mv.ToGridPosition   = grid.GridPosition + offset;
+                mv.MoveProgress     = 0f;
+                mv.IsMoving         = true;
             }
         }
-
-        /// <summary>
-        /// Processa movimento de todas as entidades
-        /// </summary>
-        [Query, All<MovementComponent, NodeComponent>]
-        private void ProcessMovement([Data] in float deltaTime, ref MovementComponent movement, ref NodeComponent node)
+        
+        // 2) Interpola todos os movers
+        [Query, All<MovementComponent, MovementInputComponent, GridPositionComponent, TransformComponent>]
+        private void ProcessMovement(
+            [Data] in float delta,
+            ref MovementComponent mv,
+            in FacingComponent facing,
+            ref GridPositionComponent grid,
+            ref TransformComponent transform)
         {
-            if (!movement.IsMoving)
+            if (!mv.IsMoving)
                 return;
 
-            // Calcula progresso e posição atual
-            var moveDistance = movement.Speed * deltaTime;
-            var totalDistance = movement.StartWorldPosition.DistanceTo(movement.TargetWorldPosition);
-            var increment = totalDistance > 0 ? moveDistance / totalDistance : 1.0f;
-            var newProgress = Mathf.Clamp(movement.MoveProgress + increment, 0.0f, 1.0f);
-            var currentWorldPos = PositionHelper.SmoothStep(movement.StartWorldPosition, movement.TargetWorldPosition, newProgress);
+            // 1) Calcula as posições de mundo
+            var fromWorld = PositionHelper.GridToWorld(mv.FromGridPosition);
+            var toWorld   = PositionHelper.GridToWorld(mv.ToGridPosition);
 
-            // Aplica posição ao node e componente antes de checar conclusão
-            node.Node.Position = currentWorldPos;
-            movement.WorldPosition = currentWorldPos;
-            movement.MoveProgress = newProgress;
+            // 2) Avanço do tween
+            var totalDist  = fromWorld.DistanceTo(toWorld);
+            var stepDist   = mv.Speed * delta;
+            var t          = totalDist > 0f
+                ? Mathf.Clamp(mv.MoveProgress + stepDist / totalDist, 0f, 1f)
+                : 1f;
 
-            if (newProgress >= 1.0f)
+            // 3) Interpola e escreve no TransformComponent
+            transform.WorldPosition = PositionHelper.SmoothStep(fromWorld, toWorld, t);
+            mv.MoveProgress         = t;
+
+            // 4) Quando chega:
+            if (t >= 1f)
             {
-                // Evento de movimento concluído
+                // 4.1) EventBus
                 GameEventBus.PublishEntityMoved(new EntityMovedEvent(
-                    entityId: (uint)node.Node.GetInstanceId(),
-                    fromGridPosition: movement.GridPosition,
-                    toGridPosition: movement.TargetGridPosition,
-                    direction: movement.CurrentDirection
+                    entityId: (uint)transform.WorldPosition.GetHashCode(), // ou node.InstanceId se preferir
+                    fromGridPosition: mv.FromGridPosition,
+                    toGridPosition: mv.ToGridPosition,
+                    direction: facing.CurrentDirection
                 ));
 
-                // Atualiza estado de grid
-                movement.GridPosition = movement.TargetGridPosition;
+                // 4.2) Atualiza o grid
+                grid.GridPosition = mv.ToGridPosition;
 
-                if (movement.HasContinuousInput)
+                // 4.3) Próximo passo ou parar
+                if (mv.HasContinuousInput)
                 {
-                    var nextDir = movement.PendingDirection != Direction.None ? movement.PendingDirection : movement.CurrentDirection;
-                    var nextGrid = movement.GridPosition + PositionHelper.DirectionToVector(nextDir);
-                    movement.CurrentDirection = nextDir;
-                    movement.TargetGridPosition = nextGrid;
-                    movement.TargetWorldPosition = PositionHelper.GridToWorld(nextGrid);
-                    movement.StartWorldPosition = movement.WorldPosition;
-                    movement.MoveProgress = 0.0f;
-                    movement.PendingDirection = Direction.None;
+                    var offset = PositionHelper.DirectionToVector(facing.CurrentDirection);
+                    mv.FromGridPosition = grid.GridPosition;
+                    mv.ToGridPosition   = grid.GridPosition + offset;
+                    mv.MoveProgress     = 0f;
                 }
                 else
                 {
-                    movement.IsMoving = false;
+                    mv.IsMoving = false;
                 }
             }
         }

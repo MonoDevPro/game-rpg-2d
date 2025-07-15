@@ -14,43 +14,14 @@ public struct MovementComponent : IComponent
     public float Speed;
 
     /// <summary>
-    /// Direção atual da entidade
+    /// Posição inicial do movimento atual (pixels)
     /// </summary>
-    public Direction CurrentDirection;
-
-    /// <summary>
-    /// Posição atual no grid
-    /// </summary>
-    public Vector2I GridPosition;
-
+    public Vector2I FromGridPosition;
+    
     /// <summary>
     /// Posição de destino no grid
     /// </summary>
-    public Vector2I TargetGridPosition;
-
-    /// <summary>
-    /// Posição atual no mundo (pixels)
-    /// </summary>
-    public Vector2 WorldPosition;
-
-    /// <summary>
-    /// Posição de destino no mundo (pixels)
-    /// </summary>
-    public Vector2 TargetWorldPosition;
-
-    /// <summary>
-    /// Posição inicial do movimento atual (pixels)
-    /// </summary>
-    public Vector2 StartWorldPosition;
-
-    /// <summary>
-    /// Posição de destino (alias para TargetWorldPosition)
-    /// </summary>
-    public Vector2 TargetPosition
-    {
-        get => TargetWorldPosition;
-        set => TargetWorldPosition = value;
-    }
+    public Vector2I ToGridPosition;
 
     /// <summary>
     /// Indica se a entidade está se movendo
@@ -63,17 +34,7 @@ public struct MovementComponent : IComponent
     public float MoveProgress;
 
     /// <summary>
-    /// Direção pendente para o próximo movimento
-    /// </summary>
-    public Direction PendingDirection;
-
-    /// <summary>
     /// Indica se há input contínuo de movimento
     /// </summary>
     public bool HasContinuousInput;
-
-    /// <summary>
-    /// Indica se o movimento atual é por navegação (clique) ou direto (teclado)
-    /// </summary>
-    public bool IsNavigationMovement;
 }

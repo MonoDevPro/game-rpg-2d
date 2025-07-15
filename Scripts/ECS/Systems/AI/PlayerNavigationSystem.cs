@@ -1,3 +1,4 @@
+/*
 using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
@@ -7,6 +8,7 @@ using GameRpg2D.Scripts.ECS.Components;
 using GameRpg2D.Scripts.ECS.Components.AI;
 using GameRpg2D.Scripts.ECS.Components.Inputs;
 using GameRpg2D.Scripts.ECS.Components.Movement;
+using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.ECS.Components.Tags;
 using Godot;
 
@@ -110,3 +112,4 @@ public partial class PlayerNavigationSystem(World world) : BaseSystem<World, flo
         navigation.PathGridPositions?.Clear();
     }
 }
+*/

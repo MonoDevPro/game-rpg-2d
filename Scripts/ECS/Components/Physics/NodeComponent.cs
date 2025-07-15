@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GameRpg2D.Scripts.ECS.Components;
+namespace GameRpg2D.Scripts.ECS.Components.Physics;
 
 public readonly struct NodeComponent(Node2D node) : IComponent
 {

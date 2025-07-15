@@ -6,6 +6,7 @@
 [node name="Player" instance=ExtResource("1_v0iea")]
 script = ExtResource("1_cvnsp")
 _playerId = 0
+StartingGridPosition = Vector2i(5, 0)
 
 [node name="NavigationAgent2D" parent="." index="2"]
 path_metadata_flags = 7

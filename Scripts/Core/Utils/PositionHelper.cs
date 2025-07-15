@@ -143,49 +143,6 @@ public static class PositionHelper
     }
 
     /// <summary>
-    /// Converte um vetor de movimento para uma direção
-    /// </summary>
-    /// <param name="vector">Vetor de movimento</param>
-    /// <returns>Direção correspondente</returns>
-    public static Direction VectorToDirection(Vector2I vector)
-    {
-        if (vector == Vector2I.Up) return Direction.North;
-        if (vector == Vector2I.Up + Vector2I.Right) return Direction.NorthEast;
-        if (vector == Vector2I.Right) return Direction.East;
-        if (vector == Vector2I.Down + Vector2I.Right) return Direction.SouthEast;
-        if (vector == Vector2I.Down) return Direction.South;
-        if (vector == Vector2I.Down + Vector2I.Left) return Direction.SouthWest;
-        if (vector == Vector2I.Left) return Direction.West;
-        if (vector == Vector2I.Up + Vector2I.Left) return Direction.NorthWest;
-        return Direction.None;
-    }
-
-    /// <summary>
-    /// Converte um vetor de movimento para uma direção (versão com Vector2)
-    /// </summary>
-    /// <param name="vector">Vetor de movimento</param>
-    /// <returns>Direção correspondente</returns>
-    public static Direction VectorToDirection(Vector2 vector)
-    {
-        if (vector.LengthSquared() == 0) return Direction.None;
-
-        var angle = Mathf.Atan2(vector.Y, vector.X);
-        var degrees = Mathf.RadToDeg(angle);
-
-        // Normaliza para 0-360 graus
-        if (degrees < 0) degrees += 360;
-
-        return degrees switch
-        {
-            >= 315 or < 45 => Direction.East,
-            >= 45 and < 135 => Direction.South,
-            >= 135 and < 225 => Direction.West,
-            >= 225 and < 315 => Direction.North,
-            _ => Direction.None
-        };
-    }
-
-    /// <summary>
     /// Obtém a próxima posição no grid baseada na direção
     /// </summary>
     /// <param name="currentPosition">Posição atual</param>

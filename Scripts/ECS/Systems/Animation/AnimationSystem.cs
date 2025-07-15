@@ -6,6 +6,7 @@ using GameRpg2D.Scripts.Core.Enums;
 using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components.Animation;
 using GameRpg2D.Scripts.ECS.Components.Combat;
+using GameRpg2D.Scripts.ECS.Components.Facing;
 using GameRpg2D.Scripts.ECS.Components.Movement;
 using GameRpg2D.Scripts.ECS.Events;
 using GameRpg2D.Scripts.ECS.Infrastructure;
@@ -24,49 +25,43 @@ public partial class AnimationSystem : BaseSystem<World, float>
     /// Processa animações baseadas no movimento
     /// </summary>
     [Query]
-    [All<AnimationComponent, MovementComponent>]
+    [All<AnimationComponent, MovementComponent, FacingComponent>]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ProcessMovementAnimation([Data] in float deltaTime, Entity entity, ref AnimationComponent animation, in MovementComponent movement)
+    private void ProcessMovementAnimation(
+        ref AnimationComponent animation, 
+        in MovementComponent movement, 
+        in AttackStateComponent attackState,
+        in FacingComponent facing)
     {
-        // IMPORTANTE: Só processa movimento se NÃO estiver atacando
-        // Verifica se a entidade tem componente de ataque
-        if (World.Has<AttackComponent>(entity))
-        {
-            ref var attack = ref World.Get<AttackComponent>(entity);
-            
-            // Se está atacando, não processa animação de movimento
-            if (attack.IsAttacking)
-                return;
-        }
-
+        // Se está atacando, prioriza animação de ataque
+        if (attackState.IsActive)
+            return;
+        
         // Determina o estado da animação baseado no movimento
         var newState = movement.IsMoving ? AnimationState.Move : AnimationState.Idle;
-        var newDirection = movement.CurrentDirection;
+        var newDirection = facing.CurrentDirection;
 
         // Só atualiza se houve mudança
-        if (animation.State != newState || animation.Direction != newDirection)
-        {
-            var animationName = GetAnimationName(newState, newDirection);
+        if (animation.State == newState && animation.Direction == newDirection)
+            return;
+        
+        var animationName = GetAnimationName(newState, newDirection);
 
-            // Calcula duração customizada baseada no tipo de animação
-            float? customDuration = null;
-            if (newState == AnimationState.Move && World.Has<MovementComponent>(entity))
-            {
-                var movementComponent = World.Get<MovementComponent>(entity);
-                customDuration = AnimationConfig.GetAnimationDuration(newState, movementSpeed: movementComponent.Speed);
-            }
+        // Calcula duração customizada baseada no tipo de animação
+        float? customDuration = null;
+        if (newState == AnimationState.Move)
+            customDuration = AnimationConfig.GetAnimationDuration(newState, movementSpeed: movement.Speed);
 
-            // Publica evento de mudança de animação
-            GameEventBus.PublishAnimationChanged(new AnimationChangedEvent(
-                entityId: (uint)entity.Id,
-                oldState: animation.State,
-                newState: newState,
-                direction: newDirection,
-                animationName: animationName
-            ));
+        // Publica evento de mudança de animação
+        GameEventBus.PublishAnimationChanged(new AnimationChangedEvent(
+            entityId: 0,
+            oldState: animation.State,
+            newState: newState,
+            direction: newDirection,
+            animationName: animationName
+        ));
 
-            PlayAnimation(ref animation, newState, newDirection, animationName, customDuration);
-        }
+        PlayAnimation(ref animation, newState, newDirection, animationName, customDuration);
     }
 
     /// <summary>
@@ -75,13 +70,17 @@ public partial class AnimationSystem : BaseSystem<World, float>
     [Query]
     [All<AnimationComponent, AttackComponent>]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ProcessAttackAnimation(Entity entity, [Data] in float deltaTime, ref AnimationComponent animation, in AttackComponent attack)
+    private void ProcessAttackAnimation(
+        ref AnimationComponent animation, 
+        in AttackStateComponent attackState, 
+        in AttackComponent attackComponent,
+        in FacingComponent facingComponent)
     {
         // Se está atacando, prioriza animação de ataque
-        if (attack.IsAttacking)
+        if (attackState.IsActive)
         {
             var newState = AnimationState.Attack;
-            var newDirection = attack.AttackDirection;
+            var newDirection = facingComponent.CurrentDirection;
 
             // Só atualiza se houve mudança real
             if (animation.State != newState || animation.Direction != newDirection)
@@ -90,7 +89,7 @@ public partial class AnimationSystem : BaseSystem<World, float>
 
                 // Publica evento de mudança de animação
                 GameEventBus.PublishAnimationChanged(new AnimationChangedEvent(
-                    entityId: (uint)entity.Id,
+                    entityId: 0,
                     oldState: animation.State,
                     newState: newState,
                     direction: newDirection,
@@ -98,7 +97,7 @@ public partial class AnimationSystem : BaseSystem<World, float>
                 ));
 
                 // Sincroniza velocidade da animação com duração do ataque
-                var customDuration = AnimationConfig.GetAnimationDuration(newState, attackSpeed: attack.AttackSpeed);
+                var customDuration = AnimationConfig.GetAnimationDuration(newState, attackSpeed: attackComponent.AttackSpeed);
                 PlayAnimation(ref animation, newState, newDirection, animationName, customDuration);
             }
         }

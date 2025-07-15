@@ -13,7 +13,4 @@
   <ItemGroup>
     <Content Include=".github\prompts\*.md" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Scripts\ECS\Systems\" />
-  </ItemGroup>
 </Project>

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using GameRpg2D.Scripts.Core.Constants;
 using GameRpg2D.Scripts.Core.Enums;
+using GameRpg2D.Scripts.Core.Utils;
 using Godot;
 
 namespace GameRpg2D.Scripts.ECS.Components.AI;
@@ -51,13 +53,13 @@ public struct NavigationComponent : IComponent
         TargetGridPosition = targetGridPosition;
         ReachGridTolerance = reachGridTolerance;
         RepathInterval = repathInterval;
+        IsEnabled = isEnabled;
         TargetNextDirection = Direction.None;
         TargetNextGridPosition = Vector2I.Zero;
         PathGridPositions = [];
         PathFound = false;
-        IsEnabled = isEnabled;
         TimeSinceLastRepath = 0.0f;
 
-        Agent.PathDesiredDistance = ReachGridTolerance;
+        Agent.PathDesiredDistance = ReachGridTolerance * GameConstants.GRID_SIZE;
     }
 }

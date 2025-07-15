@@ -1,6 +1,5 @@
 using Arch.Core;
 using Arch.System;
-using GameRpg2D.Scripts.ECS.Systems.AI;
 using GameRpg2D.Scripts.ECS.Systems.Animation;
 using GameRpg2D.Scripts.ECS.Systems.Combat;
 using GameRpg2D.Scripts.ECS.Systems.Inputs;
@@ -24,18 +23,16 @@ public sealed class EcsRunner
         // LOG: Inicialização do ECS
         GD.Print("[EcsRunner] Mundo ECS criado");
 
-
         _deltaGroup = new Group<float>(
             "ECS Systems",
             // Ordem de execução dos sistemas
-            new InputSystem(World),                // 1. Processa input
-            new PlayerNavigationSystem(World),     // 2. Conecta input com navegação (jogadores)
-            new PatrolSystem(World),               // 4. Processa patrulha dos NPCs
-            new CollisionSystem(World),            // 5. Valida colisões
-            new MovementSystem(World),             // 6. Processa movimento
-            new NavigationSystem(World),           // 3. Calcula caminhos de navegação
-            new AttackSystem(World),               // 7. Processa ataque
-            new AnimationSystem(World)             // 8. Atualiza animações
+            new InputSystem(World),   // 1. Processa input
+            new FacingSystem(World),                // 2. Atualiza direção de movimento
+            new CollisionSystem(World),             // 3. Valida colisões
+            new MovementSystem(World),              // 4. Processa movimento
+            new AttackSystem(World),                // 5. Processa ataque
+            new TransformSystem(World),             // 6. Atualiza transformações
+            new AnimationSystem(World)              // 7. Atualiza animações
         );
 
         _deltaGroup.Initialize();

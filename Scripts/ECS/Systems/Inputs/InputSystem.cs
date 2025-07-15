@@ -2,7 +2,10 @@ using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Core.Enums;
+using GameRpg2D.Scripts.Core.Utils;
+using GameRpg2D.Scripts.ECS.Components.Facing;
 using GameRpg2D.Scripts.ECS.Components.Inputs;
+using GameRpg2D.Scripts.ECS.Components.Physics;
 using GameRpg2D.Scripts.ECS.Components.Tags;
 using Godot;
 
@@ -20,7 +23,7 @@ public partial class InputSystem(World world) : BaseSystem<World, float>(world)
     private readonly StringName _moveW = "move_west";
     private readonly StringName _moveE = "move_east";
 
-    private double _elapsedTime = 0.0;
+    private double _elapsedTime;
 
     public override void BeforeUpdate(in float delta)
     {
@@ -28,71 +31,62 @@ public partial class InputSystem(World world) : BaseSystem<World, float>(world)
         _elapsedTime += delta;
     }
 
-
     [Query]
-    [All<InputComponent, LocalPlayerTag>]
-    private void UpdateInput(ref InputComponent input)
+    [All<MovementInputComponent, LocalPlayerTag>]
+    private void UpdateMovementInput(ref MovementInputComponent mv)
     {
-        // 1) Movimento
-        var rawInput = Vector2.Zero;
-        if (Input.IsActionPressed(_moveN)) rawInput.Y -= 1;
-        if (Input.IsActionPressed(_moveS)) rawInput.Y += 1;
-        if (Input.IsActionPressed(_moveW)) rawInput.X -= 1;
-        if (Input.IsActionPressed(_moveE)) rawInput.X += 1;
+        // 1) Leitura de input bruto
+        var up    = Input.IsActionPressed(_moveN);
+        var down  = Input.IsActionPressed(_moveS);
+        var left  = Input.IsActionPressed(_moveW);
+        var right = Input.IsActionPressed(_moveE);
 
-        var direction = GetDirectionFromInput(rawInput);
-        var isMovementPressed = rawInput.LengthSquared() > 0;
-        var isMovementJustPressed = isMovementPressed && !input.IsMovementPressed;
+        var raw = new Vector2I(
+            x: (right   ?  1 : 0) - (left  ? 1 : 0),
+            y: (down    ?  1 : 0) - (up    ? 1 : 0)
+        );
 
-        // 2) Ataque
-        var isAttackPressed = Input.IsActionPressed(_attackAction);
-        var isAttackJustPressed = Input.IsActionJustPressed(_attackAction);
-
-        // 3) Clique do mouse (para navegação)
-        var isClickJustPressed = Input.IsActionJustPressed(_clickAction);
-
-        // 4) Timestamps usando acumulador
-        var lastMovementTime = isMovementPressed ? _elapsedTime : input.LastMovementTime;
-        var lastAttackTime = isAttackJustPressed ? _elapsedTime : input.LastAttackTime;
-
-        // 5) Atualiza componente
-        input.MovementDirection = direction;
-        input.IsMovementPressed = isMovementPressed;
-        input.IsMovementJustPressed = isMovementJustPressed;
-        input.IsAttackPressed = isAttackPressed;
-        input.IsAttackJustPressed = isAttackJustPressed;
-        input.IsClickJustPressed = isClickJustPressed;
-        input.RawInput = rawInput;
-        input.LastMovementTime = lastMovementTime;
-        input.LastAttackTime = lastAttackTime;
+        // 2) Cálculos
+        var isMoving            = raw.LengthSquared() > 0;
+        var justStartedMovement = Input.IsActionJustPressed(_moveN)
+                                  || Input.IsActionJustPressed(_moveS)
+                                  || Input.IsActionJustPressed(_moveW)
+                                  || Input.IsActionJustPressed(_moveE);
+        
+        // 3) Escrita no componente
+        mv.IsMoving          = isMoving;
+        mv.JustStarted       = justStartedMovement;
+        mv.RawMovement       = raw;
     }
-
-    private Direction GetDirectionFromInput(Vector2 input)
+    
+    [Query]
+    [All<AttackInputComponent, LocalPlayerTag>]
+    private void UpdateAttackInput(ref AttackInputComponent attackInput)
     {
-        if (input.LengthSquared() == 0)
-            return Direction.None;
-
-        // Normaliza o input para determinar a direção
-        var angle = Mathf.Atan2(input.Y, input.X);
-        var degrees = Mathf.RadToDeg(angle);
-
-        // Ajusta para valores positivos (0-360)
-        if (degrees < 0)
-            degrees += 360;
-
-        // Determina a direção baseada no ângulo
-        // Considera 8 direções com tolerância de 22.5 graus para cada
-        return degrees switch
-        {
-            >= 337.5f or < 22.5f => Direction.East,
-            >= 22.5f and < 67.5f => Direction.SouthEast,
-            >= 67.5f and < 112.5f => Direction.South,
-            >= 112.5f and < 157.5f => Direction.SouthWest,
-            >= 157.5f and < 202.5f => Direction.West,
-            >= 202.5f and < 247.5f => Direction.NorthWest,
-            >= 247.5f and < 292.5f => Direction.North,
-            >= 292.5f and < 337.5f => Direction.NorthEast,
-            _ => Direction.None
-        };
+        // 1) Ataque
+        var isAttackPressed = Input.IsActionPressed(_attackAction);
+        var isAttackJustPressed = Input.IsActionJustPressed(_attackAction, false);
+        
+        // 2) Atualiza o componente de ataque
+        attackInput.JustAttacked = isAttackJustPressed;
+        attackInput.IsAttacking = isAttackPressed;
+    }
+    
+    [Query]
+    [All<PointerInputComponent, NodeComponent, LocalPlayerTag>]
+    private void UpdatePointerInput(ref PointerInputComponent pointerInput, in NodeComponent node)
+    {
+        // 1) Clique do mouse (para navegação)
+        var currentPos = node.Node.GetGlobalMousePosition();
+        var isClickJustPressed = Input.IsActionJustPressed(_clickAction);
+        
+        // 2) Atualiza o componente de input do ponteiro
+        pointerInput.RawDelta = currentPos - pointerInput.PreviousWorldPosition;
+        pointerInput.PreviousWorldPosition = currentPos;
+        
+        pointerInput.JustClicked = isClickJustPressed;
+        pointerInput.ClickWorldPosition = pointerInput.JustClicked 
+            ? currentPos 
+            : pointerInput.ClickWorldPosition;
     }
 }

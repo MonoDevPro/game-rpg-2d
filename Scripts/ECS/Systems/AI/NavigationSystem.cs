@@ -1,4 +1,4 @@
-using Arch.Core;
+/*using Arch.Core;
 using Arch.System;
 using Arch.System.SourceGenerator;
 using GameRpg2D.Scripts.Core.Enums;
@@ -6,6 +6,7 @@ using GameRpg2D.Scripts.Core.Utils;
 using GameRpg2D.Scripts.ECS.Components;
 using GameRpg2D.Scripts.ECS.Components.AI;
 using GameRpg2D.Scripts.ECS.Components.Movement;
+using GameRpg2D.Scripts.ECS.Components.Physics;
 using Godot;
 
 namespace GameRpg2D.Scripts.ECS.Systems.AI;
@@ -146,4 +147,4 @@ public partial class NavigationSystem(World world) : BaseSystem<World, float>(wo
         // Exemplo: desenhar linhas entre os pontos do caminho
     }
 
-}
+}*/
